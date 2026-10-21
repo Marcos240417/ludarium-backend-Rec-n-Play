@@ -1,0 +1,2 @@
+# No ProjectModel em services/project-service/models.py
+poster_path = Column(String, nullable=True) # Caminho da imagem de poster/capa

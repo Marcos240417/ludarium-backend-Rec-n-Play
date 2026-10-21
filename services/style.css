@@ -1,0 +1,721 @@
+/* ========================================== */
+/* VARIÁVEIS GLOBAIS E RESET                   */
+/* ========================================== */
+:root {
+    --bg-main: #0f0e17;
+    --bg-card: #1a1829;
+    --bg-surface: #2a2640;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --text-main: #fffffe;
+    --text-muted: #a7a9be;
+    --border: #3f3d56;
+    --danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    min-height: 100vh;
+}
+
+/* ========================================== */
+/* ECRÃ DE LOGIN / REGISTO                    */
+/* ========================================== */
+#loginScreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.login-container {
+    display: grid;
+    grid-template-columns: 1fr 450px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 1100px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 900px) {
+    .login-container {
+        grid-template-columns: 1fr;
+    }
+    .login-hero {
+        display: none;
+    }
+}
+
+.login-hero {
+    padding: 50px;
+    background: linear-gradient(135deg, #1e1b2e 0%, #0f0e17 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--border);
+}
+
+.brand-header {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-header span {
+    background: var(--accent);
+    color: white;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.login-tags-top {
+    font-size: 0.8rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.login-hero h1 {
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 15px;
+}
+
+.login-hero p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.hero-stats {
+    display: flex;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.conquista-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.conquista-icon {
+    font-size: 1.8rem;
+}
+
+.conquista-title {
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.conquista-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Formulário de Login */
+.login-card {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.login-card .subtitle {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 25px;
+}
+
+.login-card label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.login-card input:focus {
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.auth-toggle-box {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.auth-toggle-box a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.demo-divider {
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    line-height: 0.1em;
+    margin: 25px 0 20px 0;
+}
+
+.demo-divider span {
+    background: var(--bg-card);
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.demo-profile-box {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-name {
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+/* Sugestões de Utilizador Duplicado */
+.suggestions-box {
+    background: var(--bg-main);
+    border: 1px solid var(--accent);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.suggestions-title {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    margin-bottom: 8px;
+}
+
+.suggestions-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.suggestion-chip {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.suggestion-chip:hover {
+    background: var(--accent);
+}
+
+/* ========================================== */
+/* BARRA DE NAVEGAÇÃO E DASHBOARD             */
+/* ========================================== */
+.navbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 15px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand {
+    font-weight: bold;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-brand span {
+    background: var(--accent);
+    color: white;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 30px;
+}
+
+.nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.nav-links a.active, .nav-links a:hover {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.btn-novo-projeto {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-logout {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-logout:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.main-content {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+}
+
+/* ========================================== */
+/* GRELHA E CARTÕES DE PROJETOS               */
+/* ========================================== */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.project-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.project-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+}
+
+.project-img-container {
+    height: 160px;
+    background: var(--bg-surface);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.project-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.project-card:hover .project-img-container img {
+    transform: scale(1.05);
+}
+
+.project-info {
+    padding: 20px;
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.project-studio {
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.project-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.project-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-bottom: 15px;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.progress-bar-bg {
+    background: var(--bg-main);
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.progress-bar-fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 3px;
+}
+
+.project-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Controlos de Autor e Admin no Cartão */
+.project-author-actions {
+    padding: 0 20px 20px 20px;
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+}
+
+.btn-action-edit, .btn-action-delete {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    width: 100%;
+}
+
+.btn-action-edit {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+}
+
+.btn-action-delete {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+}
+
+/* ========================================== */
+/* SANDBOX (PLAYER DE JOGOS)                  */
+/* ========================================== */
+#sandboxContainer {
+    display: none;
+    margin-top: 40px;
+}
+
+.sandbox-wrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#gameIframe {
+    width: 100%;
+    flex-grow: 1;
+    border: none;
+    background: #000;
+}
+
+.sandbox-controls {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sandbox-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1a1829;
+    padding: 8px 15px;
+    border-bottom: 1px solid #7c3aed;
+}
+
+.sandbox-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.sandbox-window-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.win-btn {
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid #7c3aed;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.win-btn:hover {
+    border-color: var(--accent);
+}
+
+.sandbox-footer-bar {
+    position: absolute;
+    bottom: 10px;
+    right: 20px;
+    z-index: 10;
+}
+
+.volume-control-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 14, 23, 0.8);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+}
+
+.volume-icon {
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.volume-slider {
+    width: 80px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* ========================================== */
+/* MODAIS GERAIS                              */
+/* ========================================== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 550px;
+    padding: 30px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+}
+
+.modal-tag {
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.modal-header h2 {
+    font-size: 1.3rem;
+    margin-top: 5px;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.8rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-modal-btn:hover {
+    color: var(--text-main);
+}
+
+.modal-content label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.modal-content input, .modal-content textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    outline: none;
+}
+
+.modal-content input:focus, .modal-content textarea:focus {
+    border-color: var(--accent);
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.checkbox-wrapper input {
+    width: auto;
+    margin-bottom: 0;
+    cursor: pointer;
+}

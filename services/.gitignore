@@ -1,0 +1,15 @@
+# Ambientes virtuais e cache
+venv/
+*/venv/
+**/venv/
+__pycache__/
+*/__pycache__/
+*/**/__pycache__/
+*.pyc
+.env
+
+# Builds locais e posters em sandbox
+sandbox_builds/
+sandbox_posters/
+*.sqlite
+*.db
