@@ -1,8 +1,8 @@
-/**
- * CONSTANTES DE CONFIGURAÇÃO DAS APIS
- */
-const GATEWAY_URL = 'http://localhost:8001';          // Aponta diretamente para o auth-service
-const PROJECT_SERVICE_URL = 'http://localhost:8081'; // Aponta diretamente para o project-service
+
+// URLs dos microserviços em execução
+const AUTH_SERVICE_URL = "http://localhost:8001";
+const PROJECT_SERVICE_URL = "http://localhost:8081";
+const GATEWAY_URL = "http://localhost:8001";
 
 // Variável de controlo para alternar entre ecrã de Login e Registo
 let modoRegistoAtivo = false;

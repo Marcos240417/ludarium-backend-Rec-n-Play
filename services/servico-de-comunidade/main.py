@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import models, database, schemas
+from fastapi.middleware.cors import CORSMiddleware
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
@@ -11,7 +12,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8080/login")
 
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="Serviço de Comunidade - Ludarium", version="1.0.0")
+app = FastAPI(title="Ludarium Community Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -231,3 +240,67 @@ def listar_perfis_recomendados(db: Session = Depends(database.obter_base_de_dado
         {"id": 2, "nome": "Rafael Lima", "papel": "Programador • Godot", "compatibilidade_porcentagem": 87},
         {"id": 3, "nome": "Yasmin Alves", "papel": "UI/UX Designer", "compatibilidade_porcentagem": 81}
     ]
+
+@app.delete("/publicacoes/{publicacao_id}", status_code=status.HTTP_204_NO_CONTENT)
+def apagar_publicacao(publicacao_id: int, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
+    pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicação não encontrada")
+    
+    # Extrair o nome do utilizador a partir do email (ex: user1 de user1@exemplo.com)
+    nome_utilizador = utilizador_email.split('@')[0]
+    
+    # Verificar se o autor da publicação coincide com o utilizador autenticado
+    if pub.autor != nome_utilizador:
+        raise HTTPException(status_code=403, detail="Não tem permissão para apagar uma publicação de outro utilizador")
+    
+    db.delete(pub)
+    db.commit()
+    return None
+
+@app.delete("/comentarios/{comentario_id}", status_code=status.HTTP_204_NO_CONTENT)
+def apagar_comentario(comentario_id: int, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
+    com = db.query(models.ComentarioModel).filter(models.ComentarioModel.id == comentario_id).first()
+    if not com:
+        raise HTTPException(status_code=404, detail="Comentário não encontrado")
+    
+    nome_utilizador = utilizador_email.split('@')[0]
+    
+    # Verificar se o autor do comentário coincide com o utilizador autenticado
+    if com.autor != nome_utilizador:
+        raise HTTPException(status_code=403, detail="Não tem permissão para apagar um comentário de outro utilizador")
+    
+    db.delete(com)
+    db.commit()
+    return None
+
+@app.put("/publicacoes/{publicacao_id}")
+def editar_publicacao(publicacao_id: int, dados: schemas.PublicacaoCreate, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
+    pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicação não encontrada")
+    
+    nome_utilizador = utilizador_email.split('@')[0]
+    if pub.autor != nome_utilizador:
+        raise HTTPException(status_code=403, detail="Sem permissão para editar esta publicação")
+    
+    pub.titulo = dados.titulo
+    pub.conteudo = dados.conteudo
+    pub.comunidade = dados.comunidade
+    pub.tipo_badge = dados.tipo_badge
+    pub.tags = dados.tags
+    
+    db.commit()
+    db.refresh(pub)
+    return pub
+
+@app.patch("/publicacoes/{publicacao_id}/votar")
+def votar_publicacao(publicacao_id: int, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
+    pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicação não encontrada")
+    
+    pub.votos += 1
+    db.commit()
+    db.refresh(pub)
+    return pub    
