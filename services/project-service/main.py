@@ -70,7 +70,9 @@ def ler_raiz():
     return {"mensagem": "Project Service com autenticação JWT, suporte a builds web, posters e vínculo por utilizador a funcionar!"}
 
 @app.get("/projects", response_model=list[schemas.ProjectResponse])
+@app.get("/projects/", response_model=list[schemas.ProjectResponse])
 def listar_projetos(tag: str | None = Query(None), db: Session = Depends(database.get_db)):
+    # ... o seu código atual de listagem ...
     projetos = db.query(models.ProjectModel).all()
     
     if not projetos:
@@ -250,6 +252,7 @@ async def processar_criacao_projeto(
     }
 
 @app.post("/projects", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/projects/", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
 def criar_projeto_root(
     title: str = Form(...),
     studio: str = Form("Estúdio Independente"),
@@ -395,15 +398,11 @@ def avaliar_projeto_estrela(project_id: int, db: Session = Depends(database.get_
         "comentarios": comentarios_formatados
     }
 
-@app.patch("/projects/{project_id}/favorito", response_model=schemas.ProjectResponse)
-def alternar_favorito_projeto(project_id: int, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+@app.get("/projects/{project_id}", response_model=schemas.ProjectResponse)
+def obter_projeto(project_id: int, db: Session = Depends(database.get_db)):
     p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
-    
-    p.favorito = 1 if p.favorito == 0 else 0
-    db.commit()
-    db.refresh(p)
     
     p_tags = [t.strip() for t in p.tags.split(",") if t.strip()]
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
@@ -458,3 +457,46 @@ def listar_comunidades(db: Session = Depends(database.get_db)):
         {"id": 2, "name": "Godot em Português", "members_count": "8,2 mil membros"},
         {"id": 3, "name": "Women Who Make Games", "members_count": "4,7 mil membros"}
     ]
+
+@app.put("/projects/{project_id}", response_model=schemas.ProjectResponse)
+@app.put("/projects/{project_id}/", response_model=schemas.ProjectResponse)
+def atualizar_projeto(
+    project_id: int,
+    projeto_dados: schemas.ProjectUpdate,
+    db: Session = Depends(database.get_db),
+    token: str | None = Depends(oauth2_scheme)
+):
+    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    
+    if projeto_dados.title is not None:
+        p.title = projeto_dados.title
+    if projeto_dados.description is not None:
+        p.description = projeto_dados.description
+    if projeto_dados.progress is not None:
+        p.progress = projeto_dados.progress
+    
+    db.commit()
+    db.refresh(p)
+    
+    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
+    comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
+    
+    return {
+        "id": p.id,
+        "title": p.title,
+        "studio": p.studio,
+        "description": p.description,
+        "progress": p.progress,
+        "tags": p_tags,
+        "likes": p.likes,
+        "favorito": p.favorito,
+        "executavel_navegador": p.executavel_navegador,
+        "build_path": p.build_path,
+        "poster_path": p.poster_path,
+        "owner": p.owner,
+        "user_id": p.user_id,
+        "comments_count": len(comentarios_formatados),
+        "comentarios": comentarios_formatados
+    }
