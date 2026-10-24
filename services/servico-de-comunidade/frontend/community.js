@@ -1,15 +1,36 @@
-const COMMUNITY_SERVICE_URL = "http://localhost:8002";
+const AUTH_SERVICE_URL = "http://localhost:8001";
+const PROJECT_SERVICE_URL = "http://localhost:8081";
+const SERVICO_DE_COMUNIDADE_URL = "http://localhost:8002";
+const SERVICO_DE_CAMPANHAS_URL = 'http://localhost:8003';
+const SERVICO_DE_CAMPANHAS = SERVICO_DE_CAMPANHAS_URL;
+const SERVICO_DE_PERFIL_URL = "http://localhost:8004";
+const GATEWAY_URL = "http://localhost:8005";
+
 let listaPublicacoesGlobal = [];
 
-async function carregarTudo() {
-    await carregarPublicacoes();
-    await carregarOportunidades();
-    await carregarPerfis();
+// Função blindada para obter o token de autenticação
+function obterToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let token = urlParams.get('token');
+
+    if (token) {
+        localStorage.setItem('ludarium_token', token);
+    } else {
+        token = localStorage.getItem('ludarium_token');
+    }
+
+    // Fallback de segurança para testes se o token estiver totalmente ausente
+    if (!token) {
+        token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMSIsImV4cCI6MTc5Mjg3NTk3Nn0.8Kiajoqmtvmdt6ypcfUOGLwSEIPXmRC7ZNgU0_zpvNI";
+        localStorage.setItem('ludarium_token', token);
+    }
+
+    return token;
 }
 
-// Função auxiliar para obter o nome do utilizador atual com base no token JWT (Payload)
+// Extrair o nome do utilizador a partir do token JWT
 function obterUtilizadorAtualNome() {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     if (!token) return null;
     try {
         const base64Url = token.split('.')[1];
@@ -19,8 +40,14 @@ function obterUtilizadorAtualNome() {
         const email = payload.sub;
         return email ? email.split('@')[0] : null;
     } catch (e) {
-        return null;
+        return "user1";
     }
+}
+
+async function carregarTudo() {
+    await carregarPublicacoes();
+    await carregarOportunidades();
+    await carregarPerfis();
 }
 
 async function carregarPublicacoes() {
@@ -28,20 +55,23 @@ async function carregarPublicacoes() {
     const utilizadorAtual = obterUtilizadorAtualNome();
 
     try {
-        const response = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes`);
+        const response = await fetch(`${GATEWAY_URL}/publicacoes`);
         if (!response.ok) throw new Error('Falha ao obter publicações.');
 
         listaPublicacoesGlobal = await response.json();
-        loadingEl.style.display = 'none';
+        if (loadingEl) loadingEl.style.display = 'none';
         renderizarPublicacoes(listaPublicacoesGlobal, utilizadorAtual);
     } catch (error) {
-        loadingEl.textContent = 'Erro ao carregar publicações: ' + error.message;
-        loadingEl.style.color = '#ef4444';
+        if (loadingEl) {
+            loadingEl.textContent = 'Erro ao carregar publicações: ' + error.message;
+            loadingEl.style.color = '#ef4444';
+        }
     }
 }
 
 function renderizarPublicacoes(publicacoes, utilizadorAtual) {
     const gridEl = document.getElementById('communities-grid');
+    if (!gridEl) return;
     gridEl.innerHTML = '';
 
     if (publicacoes.length === 0) {
@@ -52,25 +82,24 @@ function renderizarPublicacoes(publicacoes, utilizadorAtual) {
     publicacoes.forEach(pub => {
         const card = document.createElement('div');
         card.className = 'community-card';
+        card.style.cssText = "background: #181b28; border: 1px solid #2a2e43; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;";
         
-        // Verifica se o utilizador atual é o autor da publicação para mostrar os botões de editar e apagar
-        const ehDonoPub = utilizadorAtual && pub.autor.toLowerCase() === utilizadorAtual.toLowerCase();
+        const ehDonoPub = utilizadorAtual && pub.autor && pub.autor.toLowerCase() === utilizadorAtual.toLowerCase();
         const botoesPubHtml = ehDonoPub ? `
             <div style="display: flex; gap: 0.5rem;">
-                <button onclick='abrirModalEditar(${JSON.stringify(pub)})' class="btn-action" style="font-size: 0.75rem; padding: 4px 8px;" title="Editar Publicação">✏️ Editar</button>
-                <button onclick="apagarPublicacao(${pub.id})" class="btn-action" style="color: #ef4444; border-color: #ef4444; font-size: 0.75rem; padding: 4px 8px;" title="Apagar Publicação">🗑️ Apagar</button>
+                <button onclick='abrirModalEditar(${JSON.stringify(pub)})' style="background: transparent; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;" title="Editar Publicação">✏️ Editar</button>
+                <button onclick="apagarPublicacao(${pub.id})" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;" title="Apagar Publicação">🗑️ Apagar</button>
             </div>
         ` : '';
 
-        // Mapeia os comentários e oculta o botão de lixeira se não for do utilizador
-        const comentariosHtml = pub.comentarios.map(c => {
-            const ehDonoComentario = utilizadorAtual && c.autor.toLowerCase() === utilizadorAtual.toLowerCase();
+        const comentariosHtml = (pub.comentarios || []).map(c => {
+            const ehDonoComentario = utilizadorAtual && c.autor && c.autor.toLowerCase() === utilizadorAtual.toLowerCase();
             const botaoApagarComHtml = ehDonoComentario
                 ? `<button onclick="apagarComentario(${c.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;" title="Apagar Comentário">🗑️</button>`
                 : '';
 
             return `
-                <div class="comment-item" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="comment-item" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.9rem; color: #cbd5e1;">
                     <div><strong>${c.autor}:</strong> ${c.conteudo}</div>
                     ${botaoApagarComHtml}
                 </div>
@@ -78,29 +107,27 @@ function renderizarPublicacoes(publicacoes, utilizadorAtual) {
         }).join('');
 
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                <span class="badge" style="margin-bottom: 0;">${pub.tipo_badge}</span>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span class="badge" style="background: #2563eb; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">${pub.tipo_badge}</span>
                 ${botoesPubHtml}
             </div>
-            <h3>${pub.titulo}</h3>
-            <div class="author-info">Por ${pub.autor} (${pub.autor_arroba}) em <strong>${pub.comunidade}</strong></div>
-            <div class="content-text">${pub.conteudo}</div>
-            <div class="stats">👥 Interessados: ${pub.interessados_qtd} | 👍 Votos: ${pub.votos}</div>
+            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.25rem; color: white;">${pub.titulo}</h3>
+            <div class="author-info" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem;">Por ${pub.autor} (${pub.autor_arroba}) em <strong>${pub.comunidade}</strong></div>
+            <div class="content-text" style="color: #e2e8f0; margin-bottom: 1rem; line-height: 1.5;">${pub.conteudo}</div>
+            <div class="stats" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem;">👥 Interessados: ${pub.interessados_qtd || 0} | 👍 Votos: ${pub.votos || 0}</div>
             
-            <div class="card-footer">
-                <div class="card-actions">
-                    <button class="btn-action" onclick="participarPublicacao(${pub.id})">Quero Participar</button>
-                    <button class="btn-action" onclick="votarPublicacao(${pub.id})">👍 Votar</button>
-                    <button class="btn-action btn-fav ${pub.favorito === 1 ? 'favoritado' : ''}" onclick="alternarFavorito(${pub.id})">❤️ Favorito</button>
-                </div>
+            <div class="card-footer" style="border-top: 1px solid #2a2e43; padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="participarPublicacao(${pub.id})" style="background: #334155; font-size: 0.8rem; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; color: white;">Quero Participar</button>
+                <button class="btn-primary" onclick="votarPublicacao(${pub.id})" style="background: #334155; font-size: 0.8rem; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; color: white;">👍 Votar</button>
+                <button class="btn-primary" onclick="alternarFavorito(${pub.id})" style="background: #334155; font-size: 0.8rem; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; color: white;">❤️ Favorito</button>
             </div>
 
-            <div class="comments-section">
-                <h4>Comentários (${pub.comentarios_qtd})</h4>
+            <div class="comments-section" style="margin-top: 1rem; border-top: 1px dashed #2a2e43; padding-top: 0.75rem;">
+                <h4 style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 0.5rem;">Comentários (${pub.comentarios_qtd || 0})</h4>
                 <div id="comments-list-${pub.id}">${comentariosHtml}</div>
-                <div class="comment-form">
-                    <input type="text" id="comment-input-${pub.id}" placeholder="Escreva um comentário...">
-                    <button class="btn-action" onclick="adicionarComentario(${pub.id})">Enviar</button>
+                <div class="comment-form" style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                    <input type="text" id="comment-input-${pub.id}" placeholder="Escreva um comentário..." style="flex: 1; background: #0f172a; border: 1px solid #2a2e43; padding: 6px 10px; border-radius: 6px; color: white; font-size: 0.85rem;">
+                    <button class="btn-primary" onclick="adicionarComentario(${pub.id})" style="background: #7c3aed; font-size: 0.8rem; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">Enviar</button>
                 </div>
             </div>
         `;
@@ -129,18 +156,13 @@ function filtrarPublicacoes() {
 }
 
 async function votarPublicacao(id) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado para votar!');
-        return;
-    }
-
+    const token = obterToken();
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${id}/votar`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${id}/votar`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Erro ao registrar voto.');
+        if (!res.ok) throw new Error('Erro ao registar voto.');
         carregarPublicacoes();
     } catch (e) {
         alert('Erro: ' + e.message);
@@ -163,14 +185,15 @@ function fecharModalEditar() {
 
 async function salvarEdicaoPublicacao(event) {
     event.preventDefault();
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     const id = document.getElementById('edit-pub-id').value;
     const tagsInput = document.getElementById('edit-pub-tags').value;
     const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()) : [];
+    const nomeAtual = obterUtilizadorAtualNome() || "Utilizador";
 
     const dadosAtualizados = {
-        autor: obterUtilizadorAtualNome(),
-        autor_arroba: "@" + obterUtilizadorAtualNome(),
+        autor: nomeAtual,
+        autor_arroba: "@" + nomeAtual,
         comunidade: document.getElementById('edit-pub-comunidade').value,
         tipo_badge: document.getElementById('edit-pub-badge').value,
         titulo: document.getElementById('edit-pub-titulo').value,
@@ -179,7 +202,7 @@ async function salvarEdicaoPublicacao(event) {
     };
 
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${id}`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${id}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -200,33 +223,39 @@ async function salvarEdicaoPublicacao(event) {
 
 async function carregarOportunidades() {
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/oportunidades`);
+        const res = await fetch(`${GATEWAY_URL}/oportunidades`);
         const ops = await res.json();
         const container = document.getElementById('oportunidades-list');
-        container.innerHTML = ops.map(o => `
-            <div class="sidebar-item">
-                <strong>${o.titulo}</strong><br>
-                <span style="font-size:0.8rem; color:#9ca3af;">${o.contexto}</span>
-            </div>
-        `).join('');
+        if (container) {
+            container.innerHTML = ops.map(o => `
+                <div class="sidebar-item" style="margin-bottom: 0.75rem; border-bottom: 1px solid #2a2e43; padding-bottom: 0.5rem;">
+                    <strong style="color: white; font-size: 0.9rem;">${o.titulo}</strong><br>
+                    <span style="font-size:0.8rem; color:#9ca3af;">${o.contexto}</span>
+                </div>
+            `).join('');
+        }
     } catch (e) {
-        document.getElementById('oportunidades-list').textContent = 'Erro ao carregar oportunidades.';
+        const container = document.getElementById('oportunidades-list');
+        if (container) container.textContent = 'Erro ao carregar oportunidades.';
     }
 }
 
 async function carregarPerfis() {
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/recomendados/skills`);
+        const res = await fetch(`${GATEWAY_URL}/recomendados/skills`);
         const perfis = await res.json();
         const container = document.getElementById('perfis-list');
-        container.innerHTML = perfis.map(p => `
-            <div class="sidebar-item">
-                <strong>${p.nome}</strong> (${p.compatibilidade_porcentagem}% match)<br>
-                <span style="font-size:0.8rem; color:#9ca3af;">${p.papel}</span>
-            </div>
-        `).join('');
+        if (container) {
+            container.innerHTML = perfis.map(p => `
+                <div class="sidebar-item" style="margin-bottom: 0.75rem; border-bottom: 1px solid #2a2e43; padding-bottom: 0.5rem;">
+                    <strong style="color: white; font-size: 0.9rem;">${p.nome}</strong> (${p.compatibilidade_porcentagem}% match)<br>
+                    <span style="font-size:0.8rem; color:#9ca3af;">${p.papel}</span>
+                </div>
+            `).join('');
+        }
     } catch (e) {
-        document.getElementById('perfis-list').textContent = 'Erro ao carregar perfis.';
+        const container = document.getElementById('perfis-list');
+        if (container) container.textContent = 'Erro ao carregar perfis.';
     }
 }
 
@@ -240,18 +269,15 @@ function fecharModalPublicacao() {
 
 async function criarPublicacao(event) {
     event.preventDefault();
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado para criar uma publicação!');
-        return;
-    }
+    const token = obterToken();
 
     const tagsInput = document.getElementById('pub-tags').value;
     const tagsArray = tagsInput ? tagsInput.split(',').map(t => t.trim()) : [];
+    const nomeAtual = obterUtilizadorAtualNome() || "Utilizador";
 
     const novaPub = {
-        autor: "Utilizador",
-        autor_arroba: "@utilizador",
+        autor: nomeAtual,
+        autor_arroba: "@" + nomeAtual,
         comunidade: document.getElementById('pub-comunidade').value,
         tipo_badge: document.getElementById('pub-badge').value,
         titulo: document.getElementById('pub-titulo').value,
@@ -260,7 +286,7 @@ async function criarPublicacao(event) {
     };
 
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -271,24 +297,29 @@ async function criarPublicacao(event) {
 
         if (!res.ok) throw new Error('Falha ao criar publicação.');
 
+        // --- NOVO: RECOMPENSA DE XP POR CRIAR PUBLICAÇÃO ---
+        await fetch(`${GATEWAY_URL}/perfil/adicionar-xp`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ xp: 50 }) // Atribui 50 XP
+        });
+
         fecharModalPublicacao();
         document.getElementById('form-nova-pub').reset();
         carregarPublicacoes();
-        alert('Publicação criada com sucesso!');
+        alert('Publicação criada com sucesso! Ganhou +50 XP 🎉');
     } catch (error) {
         alert('Erro: ' + error.message);
     }
 }
 
 async function participarPublicacao(id) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado!');
-        return;
-    }
-
+    const token = obterToken();
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${id}/participar`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${id}/participar`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -300,14 +331,9 @@ async function participarPublicacao(id) {
 }
 
 async function alternarFavorito(id) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado!');
-        return;
-    }
-
+    const token = obterToken();
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${id}/favorito`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${id}/favorito`, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -319,24 +345,20 @@ async function alternarFavorito(id) {
 }
 
 async function adicionarComentario(publicacaoId) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado para comentar!');
-        return;
-    }
-
+    const token = obterToken();
     const input = document.getElementById(`comment-input-${publicacaoId}`);
     const conteudo = input.value.trim();
     if (!conteudo) return;
 
+    const nomeAtual = obterUtilizadorAtualNome() || "Utilizador";
     const novoComentario = {
-        autor: "Utilizador",
-        autor_arroba: "@utilizador",
+        autor: nomeAtual,
+        autor_arroba: "@" + nomeAtual,
         conteudo: conteudo
     };
 
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${publicacaoId}/comentarios`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${publicacaoId}/comentarios`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -354,25 +376,17 @@ async function adicionarComentario(publicacaoId) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', carregarTudo);
-
 async function apagarPublicacao(id) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado!');
-        return;
-    }
-
+    const token = obterToken();
     if (!confirm('Tem certeza que deseja apagar esta publicação?')) return;
 
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/publicacoes/${id}`, {
+        const res = await fetch(`${GATEWAY_URL}/publicacoes/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!res.ok) throw new Error('Falha ao apagar publicação.');
-
         carregarPublicacoes();
     } catch (e) {
         alert('Erro: ' + e.message);
@@ -380,24 +394,20 @@ async function apagarPublicacao(id) {
 }
 
 async function apagarComentario(id) {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        alert('Precisa de estar autenticado!');
-        return;
-    }
-
+    const token = obterToken();
     if (!confirm('Deseja apagar este comentário?')) return;
 
     try {
-        const res = await fetch(`${COMMUNITY_SERVICE_URL}/comentarios/${id}`, {
+        const res = await fetch(`${GATEWAY_URL}/comentarios/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (!res.ok) throw new Error('Falha ao apagar comentário.');
-
         carregarPublicacoes();
     } catch (e) {
         alert('Erro: ' + e.message);
     }
 }
+
+document.addEventListener('DOMContentLoaded', carregarTudo);

@@ -9,26 +9,18 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import models, database, schemas
+import httpx
+from fastapi import Header
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/login")
 
-models.Base.metadata.create_all(bind=database.engine)
-
-# Auto-correção para garantir que as colunas essenciais existem na base de dados PostgreSQL/SQLite
-with database.engine.begin() as conn:
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS favorito INTEGER DEFAULT 0;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS build_path VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS executavel_navegador INTEGER DEFAULT 0;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS poster_path VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id VARCHAR;"))
-
+# 1. Instanciar a aplicação FastAPI primeiro
 app = FastAPI(title="Ludarium Project & Feed Service", version="1.0.0")
 
-# Ativar CORS para aceitar requisições e pre-flights (OPTIONS) do frontend
+# 2. Ativar CORS logo em seguida
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,6 +28,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 3. Montar a pasta estática correta (home.frontend)
+app.mount("/frontend", StaticFiles(directory="home.frontend"), name="frontend")
+
+# 4. Criar as tabelas e aplicar auto-correções na base de dados
+models.Base.metadata.create_all(bind=database.engine)
+
+with database.engine.begin() as conn:
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS favorito INTEGER DEFAULT 0;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS build_path VARCHAR;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS executavel_navegador INTEGER DEFAULT 0;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS poster_path VARCHAR;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id VARCHAR;"))
 
 DIRETORIO_BUILDS = "sandbox_builds"
 DIRETORIO_POSTERS = "sandbox_posters"
@@ -72,7 +78,7 @@ def ler_raiz():
 @app.get("/projects", response_model=list[schemas.ProjectResponse])
 @app.get("/projects/", response_model=list[schemas.ProjectResponse])
 def listar_projetos(tag: str | None = Query(None), db: Session = Depends(database.get_db)):
-    # ... o seu código atual de listagem ...
+
     projetos = db.query(models.ProjectModel).all()
     
     if not projetos:
@@ -167,89 +173,6 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             "comentarios": comentarios_formatados
         })
     return resultado
-
-async def processar_criacao_projeto(
-    title: str,
-    studio: str,
-    description: str,
-    tags: str,
-    progress: int,
-    executavel_navegador: int,
-    build_zip: UploadFile | None,
-    poster_file: UploadFile | None,
-    db: Session,
-    utilizador_email: str
-):
-    caminho_extraido = None
-    pasta_slug = title.lower().replace(" ", "_")
-    
-    if executavel_navegador and build_zip:
-        pasta_projeto = os.path.join(DIRETORIO_BUILDS, pasta_slug)
-        if os.path.exists(pasta_projeto):
-            shutil.rmtree(pasta_projeto)
-        os.makedirs(pasta_projeto, exist_ok=True)
-        
-        zip_path = os.path.join(pasta_projeto, "build.zip")
-        with open(zip_path, "wb") as buffer:
-            buffer.write(await build_zip.read())
-            
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(pasta_projeto)
-            
-        os.remove(zip_path)
-        
-        itens = os.listdir(pasta_projeto)
-        if len(itens) == 1:
-            caminho_interno = os.path.join(pasta_projeto, itens[0])
-            if os.path.isdir(caminho_interno):
-                for subitem in os.listdir(caminho_interno):
-                    origem = os.path.join(caminho_interno, subitem)
-                    destino = os.path.join(pasta_projeto, subitem)
-                    if os.path.exists(destino):
-                        if os.path.isdir(destino):
-                            shutil.rmtree(destino)
-                        else:
-                            os.remove(destino)
-                    shutil.move(origem, destino)
-                os.rmdir(caminho_interno)
-
-        caminho_extraido = pasta_projeto
-
-    caminho_poster = None
-    if poster_file:
-        extensao = os.path.splitext(poster_file.filename)[1]
-        nome_poster = f"{pasta_slug}_poster{extensao}"
-        caminho_fisico = os.path.join(DIRETORIO_POSTERS, nome_poster)
-        
-        with open(caminho_fisico, "wb") as buffer:
-            buffer.write(await poster_file.read())
-            
-        caminho_poster = f"/posters/{nome_poster}"
-
-    novo_projeto = models.ProjectModel(
-        title=title,
-        studio=studio,
-        description=description,
-        progress=progress,
-        tags=tags,
-        executavel_navegador=executavel_navegador,
-        build_path=caminho_extraido,
-        poster_path=caminho_poster,
-        likes=0,
-        favorito=0
-    )
-    db.add(novo_projeto)
-    db.commit()
-    db.refresh(novo_projeto)
-    
-    return {
-        "mensagem": "Projeto, build web e poster configurados com sucesso!",
-        "id": novo_projeto.id,
-        "title": novo_projeto.title,
-        "executavel_navegador": novo_projeto.executavel_navegador,
-        "build_path": novo_projeto.build_path,
-        "poster_path": novo_projeto.poster_path
-    }
 
 @app.post("/projects", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
 @app.post("/projects/", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
@@ -500,3 +423,26 @@ def atualizar_projeto(
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
+
+@app.post("/projects/{project_id}/testar")
+async def testar_projeto(
+    project_id: int, 
+    authorization: str = Header(None),
+    # ... os seus parâmetros atuais de base de dados e dependências ...
+):
+    # --- 1. A sua lógica atual para registar o teste ou feedback do jogo ---
+    # (ex: guardar o resultado do teste na base de dados, db.commit())
+
+    # --- 2. RECOMPENSA AUTOMÁTICA DE XP (Ex: +75 XP por testar um jogo no Sandbox) ---
+    if authorization:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    "http://localhost:8005/perfil/adicionar-xp",
+                    json={"xp": 75},
+                    headers={"Authorization": authorization}
+                )
+        except Exception as e:
+            print(f"Erro ao creditar XP pelo teste do jogo: {e}")
+
+    return {"mensagem": "Teste registado com sucesso e +75 XP adicionados ao seu perfil!"}

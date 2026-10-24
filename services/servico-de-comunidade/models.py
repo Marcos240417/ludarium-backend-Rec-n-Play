@@ -46,3 +46,11 @@ class PerfilRecomendadoModel(Base):
     nome = Column(String, nullable=False)
     papel = Column(String, nullable=False)
     compatibilidade_porcentagem = Column(Integer, nullable=False)
+
+class MessageModel(Base):
+    __tablename__ = "mensagens_privadas"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_username = Column(String, nullable=False)
+    recipient_email = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(String, nullable=False)   

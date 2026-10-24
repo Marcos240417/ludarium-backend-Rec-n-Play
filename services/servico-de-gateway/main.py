@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request, Response, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request, HTTPException, Header, Response
 import httpx
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="Gateway de API - Ludarium", version="1.0.0")
 
@@ -13,13 +14,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mapeamento corrigido com as portas reais que colocámos a correr nos terminais
+# Mapeamento corrigido com as portas reais definidas no start_all.ps1
 SERVICOS = {
     "auth": "http://localhost:8001",
     "projetos": "http://localhost:8081",
-    "campanhas": "http://localhost:8082",
-    "comunidade": "http://localhost:8083",
-    "perfil": "http://localhost:8084",
+    "comunidade": "http://localhost:8002",
+    "campanhas": "http://localhost:8003",
+    "perfil": "http://localhost:8004",
+    "gateway": "http://localhost:8005"
 }
 
 client = httpx.AsyncClient(timeout=30.0)
@@ -55,6 +57,19 @@ async def reencaminhar_pedido(servico_url: str, request: Request, path: str):
         )
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="O microsserviço de destino encontra-se indisponível ou offline.")
+
+@app.get("/perfil/leaderboard")
+async def gateway_leaderboard(authorization: str = Header(None)):
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": authorization} if authorization else {}
+        try:
+            response = await client.get("http://localhost:8004/perfil/leaderboard", headers=headers)
+            # Se o microsserviço falhou, retorna o erro exato em vez de rebentar o Gateway
+            if response.status_code != 200:
+                return {"erro": "Erro no Serviço de Perfil", "detalhes": response.text}, response.status_code
+            return response.json()
+        except httpx.ConnectError:
+            return {"erro": "Serviço de Perfil inacessível na porta 8004"}, 503
 
 # --- Rotas de Autenticação ---
 @app.api_route("/login", methods=["POST"])
@@ -95,14 +110,20 @@ async def gw_perfil_root(request: Request):
 async def gw_perfil_sub(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["perfil"], request, f"perfil/{path}")
 
-# --- Rotas de Comunidade ---
+# --- Rotas de Comunidade e Mensagens ---
 @app.api_route("/publicacoes", methods=["GET", "POST"])
 async def gw_publicacoes(request: Request):
     return await reencaminhar_pedido(SERVICOS["comunidade"], request, "publicacoes")
 
-@app.api_route("/publicacoes/{path:path}", methods=["GET", "POST", "PATCH", "DELETE"])
+# CORRIGIDO: Adicionado o método "PUT" para permitir a edição de publicações
+@app.api_route("/publicacoes/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def gw_publicacoes_sub(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["comunidade"], request, f"publicacoes/{path}")
+
+# ADICIONADO: Rota em falta para gerir/apagar comentários na comunidade
+@app.api_route("/comentarios/{path:path}", methods=["GET", "POST", "DELETE"])
+async def gw_comentarios_sub(request: Request, path: str):
+    return await reencaminhar_pedido(SERVICOS["comunidade"], request, f"comentarios/{path}")
 
 @app.api_route("/oportunidades", methods=["GET"])
 async def gw_oportunidades(request: Request):
@@ -111,6 +132,10 @@ async def gw_oportunidades(request: Request):
 @app.api_route("/recomendados/skills", methods=["GET"])
 async def gw_skills(request: Request):
     return await reencaminhar_pedido(SERVICOS["comunidade"], request, "recomendados/skills")
+
+@app.api_route("/messages/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def gw_messages(request: Request, path: str):
+    return await reencaminhar_pedido(SERVICOS["comunidade"], request, f"messages/{path}")
 
 # --- Rotas de Campanhas e Desafios ---
 @app.api_route("/progresso-usuario", methods=["GET"])
@@ -124,3 +149,8 @@ async def gw_campanhas(request: Request):
 @app.api_route("/objetivos/{path:path}", methods=["GET", "PATCH"])
 async def gw_objetivos(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["campanhas"], request, f"objetivos/{path}")
+
+# --- Rotas de Utilizadores / Pesquisa Admin ---
+@app.api_route("/users/{path:path}", methods=["GET"])
+async def gw_users(request: Request, path: str):
+    return await reencaminhar_pedido(SERVICOS["auth"], request, f"users/{path}")

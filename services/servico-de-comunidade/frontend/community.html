@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludarium - Comunidades</title>
+    <link rel="stylesheet" href="community.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">Ludarium</div>
+        <nav class="main-navbar">
+            <div class="nav-container">
+                <span class="nav-brand">Ludarium Hub</span>
+                <ul class="nav-links">
+                    <li><a href="http://127.0.0.1:8081/frontend/index.html">Projetos</a></li>
+                    <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
+                    <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
+                    <li><a href="http://127.0.0.1:8004/frontend/perfil.html">Perfil</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="hero-section">
+            <div class="hero-text">
+                <h1>Comunidades de Desenvolvedores</h1>
+                <p>Junte-se a grupos, troque ideias e encontre parceiros para os seus projetos indie.</p>
+            </div>
+            <button class="btn-primary" onclick="abrirModalPublicacao()">+ Nova Publicação</button>
+        </section>
+
+        <!-- Barra de Pesquisa e Filtros -->
+        <div class="filter-container" style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <input type="text" id="input-pesquisa" placeholder="Pesquisar por título ou conteúdo..." oninput="filtrarPublicacoes()" style="flex: 1; background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem 1rem; border-radius: 8px; color: white;">
+            <select id="select-filtro-badge" onchange="filtrarPublicacoes()" style="background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem; border-radius: 8px; color: white;">
+                <option value="">Todas as Badges</option>
+                <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
+                <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
+                <option value="DEVLOG">DEVLOG</option>
+            </select>
+        </div>
+
+        <div class="content-layout">
+            <!-- Feed Principal -->
+            <div class="feed-container">
+                <div id="loading" class="loading">A carregar publicações...</div>
+                <div id="communities-grid" class="communities-grid"></div>
+            </div>
+
+            <!-- Sidebar com Oportunidades e Perfis -->
+            <aside class="sidebar">
+                <div class="sidebar-card">
+                    <h3>🚀 Oportunidades Abertas</h3>
+                    <div id="oportunidades-list">A carregar...</div>
+                </div>
+                <div class="sidebar-card">
+                    <h3>👥 Perfis Recomendados</h3>
+                    <div id="perfis-list">A carregar...</div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Modal para Criar Publicação -->
+    <div id="modal-pub" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: #1e293b; padding: 2rem; border-radius: 12px; width: 450px; border: 1px solid #334155;">
+            <span class="close" onclick="fecharModalPublicacao()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: white;">Criar Nova Publicação</h2>
+            <form id="form-nova-pub" onsubmit="criarPublicacao(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="text" id="pub-titulo" placeholder="Título da publicação" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <select id="pub-badge" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                    <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
+                    <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
+                    <option value="DEVLOG">DEVLOG</option>
+                </select>
+                <input type="text" id="pub-comunidade" placeholder="Nome da Comunidade (ex: Dev Indie Brasil)" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <textarea id="pub-conteudo" placeholder="Escreva o conteúdo..." rows="4" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; resize: vertical;"></textarea>
+                <input type="text" id="pub-tags" placeholder="Tags separadas por vírgula (ex: godot, pixel art)" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <button type="submit" class="btn-primary" style="background: #7c3aed; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Publicar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Publicação -->
+    <div id="modal-editar" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: #1e293b; padding: 2rem; border-radius: 12px; width: 450px; border: 1px solid #334155;">
+            <span class="close" onclick="fecharModalEditar()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: white;">Editar Publicação</h2>
+            <form id="form-editar-pub" onsubmit="salvarEdicaoPublicacao(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="hidden" id="edit-pub-id">
+                <input type="text" id="edit-pub-titulo" placeholder="Título" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <select id="edit-pub-badge" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                    <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
+                    <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
+                    <option value="DEVLOG">DEVLOG</option>
+                </select>
+                <input type="text" id="edit-pub-comunidade" placeholder="Nome da Comunidade" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <textarea id="edit-pub-conteudo" rows="4" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; resize: vertical;"></textarea>
+                <input type="text" id="edit-pub-tags" placeholder="Tags separadas por vírgula" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <button type="submit" class="btn-primary" style="background: #7c3aed; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script JavaScript da Comunidade -->
+    <script src="community.js"></script>
+</body>
+</html>

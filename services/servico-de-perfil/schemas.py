@@ -1,5 +1,26 @@
 from pydantic import BaseModel
 
+from pydantic import BaseModel
+from typing import Optional
+
+class LinkUpdateSchema(BaseModel):
+    rotulo: str
+    url: str
+    class Config:
+        from_attributes = True
+
+class PerfilUpdate(BaseModel):
+    nome: Optional[str] = None
+    arroba: Optional[str] = None
+    localizacao: Optional[str] = None
+    biografia: Optional[str] = None
+    badge_funcao: Optional[str] = None
+    links: Optional[list[LinkUpdateSchema]] = None # Adicionado suporte a links
+
+    class Config:
+        from_attributes = True
+
+# (Mantenha os outros schemas existentes: LinkResponse, ComunidadeResponse, etc.)
 class LinkResponse(BaseModel):
     rotulo: str
     url: str

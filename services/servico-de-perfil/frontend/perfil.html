@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Perfil do Utilizador - Ludarium</title>
+    <link rel="stylesheet" href="perfil.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">🎮 Ludarium</div>
+        <ul class="nav-links">
+            <li><a href="http://127.0.0.1:8081/frontend/index.html">Projetos</a></li>
+            <li><a href="http://127.0.0.1:8002/frontend/community.html">Comunidade</a></li>
+            <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
+            <li><a href="http://127.0.0.1:8004/frontend/perfil.html" class="active">Perfil</a></li>
+        </ul>
+    </header>
+
+    <main class="profile-container">
+        <!-- Cabeçalho do Perfil -->
+        <section class="profile-header">
+            <div class="profile-info">
+                <h1 id="profile-name">Carregando...</h1>
+                <p id="profile-arroba">@...</p>
+                <p id="profile-location">📍 ...</p>
+                <p id="profile-bio" class="bio">...</p>
+                <div id="profile-links" class="links-list"></div>
+
+                <!-- Botões de Ação: Editar e Eliminar Perfil -->
+                <div style="margin-top: 1.2rem;">
+                    <button onclick="toggleEditForm()" style="background: #38bdf8; color: #0f172a; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer;">✏️ Editar Perfil</button>
+                    <button onclick="deletarPerfil()" style="background: #ef4444; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer; margin-left: 0.5rem;">🗑️ Eliminar Perfil</button>
+                </div>
+
+                <!-- Formulário de Edição Oculto Inicialmente -->
+                <div id="edit-form-container" style="display: none; margin-top: 1.5rem; background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px solid #334155;">
+                    <h3 style="margin-top: 0; color: #38bdf8;">Atualizar Perfil</h3>
+                    <form id="update-form">
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Nome:</label>
+                        <input type="text" id="input-nome" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+                        
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Arroba:</label>
+                        <input type="text" id="input-arroba" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Localização:</label>
+                        <input type="text" id="input-localizacao" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Biografia:</label>
+                        <textarea id="input-biografia" rows="3" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;"></textarea>
+
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Link 1 (Ex: GitHub URL):</label>
+                        <input type="text" id="input-link1-url" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Link 2 (Ex: LinkedIn URL):</label>
+                        <input type="text" id="input-link2-url" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+
+                        <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Link 3 (Ex: Website URL):</label>
+                        <input type="text" id="input-link3-url" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
+
+                        <button type="submit" style="background: #22c55e; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer;">Guardar Alterações</button>
+                        <button type="button" onclick="toggleEditForm()" style="background: #64748b; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer; margin-left: 0.5rem;">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="profile-stats-card">
+                <span id="badge-funcao" class="badge">FUNDADORA</span>
+                <h3>Nível <span id="profile-level">24</span></h3>
+                <p>XP: <span id="profile-xp">11400</span> / <span id="profile-xp-next">15000</span></p>
+                <div class="stats-grid">
+                    <div><strong id="stat-seguidores">284</strong> Seguidores</div>
+                    <div><strong id="stat-seguindo">96</strong> Seguindo</div>
+                    <div><strong id="stat-projetos">6</strong> Projetos</div>
+                    <div><strong id="stat-contribuicoes">1248</strong> Contribuições</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Secções Dinâmicas -->
+        <div class="profile-grid">
+            <div class="column-left">
+                <section class="card">
+                    <h2>Comunidades</h2>
+                    <ul id="comunidades-list"></ul>
+                </section>
+                <section class="card">
+                    <h2>Sala de Troféus</h2>
+                    <div id="trofeus-list"></div>
+                </section>
+            </div>
+            <div class="column-right">
+                <section class="card">
+                    <h2>Projetos em Destaque</h2>
+                    <div id="projetos-destaque-list"></div>
+                </section>
+                <section class="card">
+                    <h2>Atividade Recente</h2>
+                    <div id="atividades-list"></div>
+                </section>
+
+                <!-- Placar de Líderes Global integrado no HTML -->
+                <section class="card" style="background: #1a1829; border: 1px solid #7c3aed; margin-top: 20px;">
+                    <h2 style="color: #d8b4fe;">🏆 Placar de Líderes (Top 10 XP)</h2>
+                    <div id="leaderboard-list">
+                        <p style="color: #9ca3af; font-size: 0.9rem;">A carregar ranking...</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="perfil.js"></script>
+</body>
+</html>

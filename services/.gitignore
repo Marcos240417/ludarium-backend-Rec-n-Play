@@ -1,7 +1,10 @@
 # Ambientes virtuais e cache
 venv/
+.venv/
 */venv/
+*/.venv/
 **/venv/
+**/.venv/
 __pycache__/
 */__pycache__/
 */**/__pycache__/
@@ -13,3 +16,16 @@ sandbox_builds/
 sandbox_posters/
 *.sqlite
 *.db
+
+# IDEs e Editores de Código
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ficheiros do Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Logs e Ficheiros Temporários
+*.log

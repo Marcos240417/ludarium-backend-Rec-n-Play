@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludarium - Entrar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="verificarSessaoLogin()">
+    <div id="loginScreen">
+        <div class="login-container">
+            <div class="login-hero">
+                <div class="brand-header">
+                    <span>L</span>
+                    LUDARIUM
+                </div>
+                <div class="login-tags-top">CRIE • COMPARTILHE • EVOLUA</div>
+                <h1>Todo grande jogo começou com uma ideia.</h1>
+                <p>Entre na comunidade onde projetos ganham colaboradores, desafios viram experiência e cada conquista conta a sua história.</p>
+                
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">18,4k</div>
+                        <div class="stat-label">Criadores</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">6,2k</div>
+                        <div class="stat-label">Projetos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">142</div>
+                        <div class="stat-label">Campanhas</div>
+                    </div>
+                </div>
+
+                <div class="conquista-card">
+                    <div class="conquista-icon">🏆</div>
+                    <div class="conquista-text">
+                        <div class="conquista-title">Conquista desbloqueada</div>
+                        <div class="conquista-desc">Sua próxima ideia começa aqui</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-card">
+                <h3 id="formTitle">Continue construindo.</h3>
+                <p class="subtitle" id="formSubtitle">Acesse seu perfil, projetos e jornadas em andamento.</p>
+                
+                <div id="authFormContainer">
+                    <div id="usernameFieldContainer" style="display: none;">
+                        <label>NOME DE UTILIZADOR</label>
+                        <input type="text" id="regUsername" placeholder="Ex.: dev_indie">
+                    </div>
+
+                    <label id="labelUserEmail">UTILIZADOR OU EMAIL</label>
+                    <input type="text" id="loginUser" placeholder="Ex.: admin ou email@teste.com">
+                    
+                    <label>SENHA</label>
+                    <input type="password" id="loginPass" placeholder="••••••••">
+                    
+                    <div id="suggestionsBox" class="suggestions-box" style="display: none;">
+                        <p class="suggestions-title">⚠️ Este utilizador já existe. Sugestões disponíveis:</p>
+                        <div id="suggestionsList" class="suggestions-list"></div>
+                    </div>
+
+                    <button class="btn-primary" id="authBtnAction" onclick="executarAcaoAuth()">ENTRAR NA LUDARIUM →</button>
+                </div>
+
+                <div class="auth-toggle-box">
+                    <span id="toggleText">Ainda não tem conta?</span>
+                    <a href="#" id="toggleLink" onclick="alternarModoAuth(event)">Criar uma conta</a>
+                </div>
+
+                <div class="demo-divider"><span>Acesso Demonstrativo</span></div>
+
+                <div class="demo-profile-box">
+                    <div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">PERFIL ADMIN</div>
+                        <div class="profile-name">admin / admin</div>
+                    </div>
+                    <button onclick="preencherAdminDemo()" style="background: var(--accent); border: none; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Usar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script-login.js"></script>
+</body>
+</html>

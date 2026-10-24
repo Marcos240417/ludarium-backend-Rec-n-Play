@@ -4,6 +4,8 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import models, database, schemas
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from datetime import datetime
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
@@ -13,6 +15,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8080/login")
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Ludarium Community Service", version="1.0.0")
+
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -104,7 +108,6 @@ def listar_publicacoes(db: Session = Depends(database.obter_base_de_dados)):
 
 @app.post("/publicacoes", response_model=schemas.PublicacaoResponse, status_code=status.HTTP_201_CREATED)
 def criar_publicacao(pub: schemas.PublicacaoCreate, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
-    """Cria uma nova publicação associada ao utilizador autenticado"""
     nome_utilizador = utilizador_email.split('@')[0]
     tags_str = ",".join(pub.tags)
     
@@ -142,7 +145,6 @@ def criar_publicacao(pub: schemas.PublicacaoCreate, db: Session = Depends(databa
 
 @app.post("/publicacoes/{publicacao_id}/comentarios", response_model=schemas.ComentarioResponse, status_code=status.HTTP_201_CREATED)
 def adicionar_comentario(publicacao_id: int, comentario: schemas.ComentarioCreate, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
-    """Adiciona um comentário associado ao utilizador autenticado"""
     pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
     if not pub:
         raise HTTPException(status_code=404, detail="Publicação não encontrada")
@@ -161,7 +163,6 @@ def adicionar_comentario(publicacao_id: int, comentario: schemas.ComentarioCreat
 
 @app.patch("/publicacoes/{publicacao_id}/participar", response_model=schemas.PublicacaoResponse)
 def quero_participar(publicacao_id: int, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
-    """Regista o clique do utilizador autenticado no botão Quero Participar"""
     pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
     if not pub:
         raise HTTPException(status_code=404, detail="Publicação não encontrada")
@@ -194,7 +195,6 @@ def quero_participar(publicacao_id: int, db: Session = Depends(database.obter_ba
 
 @app.patch("/publicacoes/{publicacao_id}/favorito", response_model=schemas.PublicacaoResponse)
 def alternar_favorito(publicacao_id: int, db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
-    """Alterna o estado de favorito para o utilizador autenticado"""
     pub = db.query(models.PublicacaoModel).filter(models.PublicacaoModel.id == publicacao_id).first()
     if not pub:
         raise HTTPException(status_code=404, detail="Publicação não encontrada")
@@ -247,10 +247,7 @@ def apagar_publicacao(publicacao_id: int, db: Session = Depends(database.obter_b
     if not pub:
         raise HTTPException(status_code=404, detail="Publicação não encontrada")
     
-    # Extrair o nome do utilizador a partir do email (ex: user1 de user1@exemplo.com)
     nome_utilizador = utilizador_email.split('@')[0]
-    
-    # Verificar se o autor da publicação coincide com o utilizador autenticado
     if pub.autor != nome_utilizador:
         raise HTTPException(status_code=403, detail="Não tem permissão para apagar uma publicação de outro utilizador")
     
@@ -265,8 +262,6 @@ def apagar_comentario(comentario_id: int, db: Session = Depends(database.obter_b
         raise HTTPException(status_code=404, detail="Comentário não encontrado")
     
     nome_utilizador = utilizador_email.split('@')[0]
-    
-    # Verificar se o autor do comentário coincide com o utilizador autenticado
     if com.autor != nome_utilizador:
         raise HTTPException(status_code=403, detail="Não tem permissão para apagar um comentário de outro utilizador")
     
@@ -288,7 +283,7 @@ def editar_publicacao(publicacao_id: int, dados: schemas.PublicacaoCreate, db: S
     pub.conteudo = dados.conteudo
     pub.comunidade = dados.comunidade
     pub.tipo_badge = dados.tipo_badge
-    pub.tags = dados.tags
+    pub.tags = ",".join(dados.tags)
     
     db.commit()
     db.refresh(pub)
@@ -304,3 +299,50 @@ def votar_publicacao(publicacao_id: int, db: Session = Depends(database.obter_ba
     db.commit()
     db.refresh(pub)
     return pub    
+
+@app.get("/messages/my-messages")
+def listar_mensagens_privadas(db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
+    mensagens = db.query(models.MessageModel).all()
+    if not mensagens:
+        msg_inicial = models.MessageModel(
+            sender_username="Administração Ludarium",
+            recipient_email=utilizador_email,
+            content="Bem-vindo ao sistema de microsserviços do Ludarium! Verifique as diretrizes da comunidade.",
+            created_at="2026-10-22T10:00:00Z"
+        )
+        db.add(msg_inicial)
+        db.commit()
+        db.refresh(msg_inicial)
+        mensagens = [msg_inicial]
+    return mensagens
+
+@app.post("/messages/send-admin-message")
+def enviar_mensagem_admin(
+    recipient_username: str, 
+    content: str, 
+    db: Session = Depends(database.obter_base_de_dados), 
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    nova_msg = models.MessageModel(
+        sender_username=utilizador_email.split('@')[0],
+        recipient_email=recipient_username,
+        content=content,
+        created_at=datetime.utcnow().isoformat() + "Z"
+    )
+    db.add(nova_msg)
+    db.commit()
+    db.refresh(nova_msg)
+    return {"mensagem": "Mensagem privada enviada com sucesso!"}
+
+@app.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+def apagar_mensagem(
+    message_id: int, 
+    db: Session = Depends(database.obter_base_de_dados),
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    mensagem = db.query(models.MessageModel).filter(models.MessageModel.id == message_id).first()
+    if not mensagem:
+        return None
+    db.delete(mensagem)
+    db.commit()
+    return None

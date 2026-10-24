@@ -1,4 +1,12 @@
 from pydantic import BaseModel
+from typing import Optional
+
+class CampanhaCreate(BaseModel):
+    titulo: str
+    descricao: str
+    categoria: Optional[str] = "GAME JAM"
+    nivel: Optional[str] = "Iniciante"
+    recompensa_xp: Optional[int] = 2500
 
 class ObjetivoResponse(BaseModel):
     id: int

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludarium - Gestão de Campanhas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Barra de Navegação Unificada -->
+    <nav class="main-navbar">
+            <div class="nav-container">
+                <span class="nav-brand">Ludarium Hub</span>
+                    <ul class="nav-links">
+                        <li><a href="http://127.0.0.1:8081/frontend/index.html" class="active">Projetos</a></li>
+                        <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
+                        <li><a href="http://127.0.0.1:8003/frontend/campanhas.html" class="active">Campanhas</a></li>
+                        <li><a href="http://127.0.0.1:8004/frontend/perfil.html" class="active">Perfil</a></li>
+                    </ul>
+            </div>
+        </nav>
+
+    <div class="container">
+        <header>
+            <h1>Painel de Campanhas</h1>
+            <p>Gerencie e teste as campanhas do Ludarium em tempo real.</p>
+        </header>
+
+        <!-- Formulário para Criar Campanha -->
+        <section class="card">
+            <h2>Criar Nova Campanha</h2>
+            <form id="campaign-form">
+                <div class="form-group">
+                    <label for="title">Título:</label>
+                    <input type="text" id="title" required placeholder="Ex: Campanha de Lançamento">
+                </div>
+                <div class="form-group">
+                    <label for="description">Descrição:</label>
+                    <textarea id="description" required placeholder="Detalhes da campanha..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="goal">Meta (R$ / Pontos):</label>
+                    <input type="number" id="goal" required placeholder="Ex: 5000">
+                </div>
+                <button type="submit" class="btn">Criar Campanha</button>
+            </form>
+        </section>
+
+        <!-- Lista de Campanhas -->
+        <section class="card">
+            <h2>Campanhas Existentes</h2>
+            <div id="campaigns-list" class="grid-list">
+                <p class="loading">A carregar campanhas...</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

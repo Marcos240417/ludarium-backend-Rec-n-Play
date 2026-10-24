@@ -1,0 +1,51 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+    margin: 0;
+    padding: 0;
+}
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1e293b;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #334155;
+}
+.logo { font-size: 1.2rem; font-weight: bold; color: #38bdf8; }
+.nav-links { list-style: none; display: flex; gap: 1.5rem; margin: 0; }
+.nav-links a { color: #94a3b8; text-decoration: none; font-weight: 500; }
+.nav-links a.active, .nav-links a:hover { color: #38bdf8; }
+
+.profile-container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    background: #1e293b;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    margin-bottom: 2rem;
+}
+.profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+.profile-info p { margin: 0.2rem 0; color: #94a3b8; }
+.bio { margin-top: 1rem !important; color: #cbd5e1 !important; line-height: 1.5; }
+.links-list { display: flex; gap: 1rem; margin-top: 1rem; }
+.links-list a { color: #38bdf8; text-decoration: none; font-size: 0.9rem; }
+
+.profile-stats-card {
+    background: #0f172a;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    min-width: 250px;
+    text-align: center;
+}
+.badge { background: #38bdf8; color: #0f172a; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; font-size: 0.85rem; text-align: left; color: #94a3b8; }
+.stats-grid strong { color: #f8fafc; display: block; font-size: 1.1rem; }
+
+.profile-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
+.card { background: #1e293b; padding: 1.5rem; border-radius: 12px; border: 1px solid #334155; margin-bottom: 1.5rem; }
+.card h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
