@@ -1,0 +1,290 @@
+/* ========================================== */
+/* VARIÁVEIS GLOBAIS E RESET                  */
+/* ========================================== */
+:root {
+    --bg-main: #0f0e17;
+    --bg-card: #1a1829;
+    --bg-surface: #2a2640;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --text-main: #fffffe;
+    --text-muted: #a7a9be;
+    --border: #3f3d56;
+    --danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    min-height: 100vh;
+}
+
+/* ========================================== */
+/* ECRÃ DE LOGIN / REGISTO                    */
+/* ========================================== */
+#loginScreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.login-container {
+    display: grid;
+    grid-template-columns: 1fr 450px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 1100px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 900px) {
+    .login-container {
+        grid-template-columns: 1fr;
+    }
+    .login-hero {
+        display: none;
+    }
+}
+
+.login-hero {
+    padding: 50px;
+    background: linear-gradient(135deg, #1e1b2e 0%, #0f0e17 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--border);
+}
+
+.brand-header {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-header span {
+    background: var(--accent);
+    color: white;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.login-tags-top {
+    font-size: 0.8rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.login-hero h1 {
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 15px;
+}
+
+.login-hero p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.hero-stats {
+    display: flex;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.conquista-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.conquista-icon {
+    font-size: 1.8rem;
+}
+
+.conquista-title {
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.conquista-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Formulário de Login */
+.login-card {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.login-card .subtitle {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 25px;
+}
+
+.login-card label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.login-card input:focus {
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.auth-toggle-box {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.auth-toggle-box a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.demo-divider {
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    line-height: 0.1em;
+    margin: 25px 0 20px 0;
+}
+
+.demo-divider span {
+    background: var(--bg-card);
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.demo-profile-box {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-name {
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+/* Sugestões de Utilizador Duplicado */
+.suggestions-box {
+    background: var(--bg-main);
+    border: 1px solid var(--accent);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.suggestions-title {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    margin-bottom: 8px;
+}
+
+.suggestions-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.suggestion-chip {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+
+.suggestion-chip:hover {
+    background: var(--accent);
+}

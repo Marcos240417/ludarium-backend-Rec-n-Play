@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+import os
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import models, database, schemas
+import httpx
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
@@ -76,70 +78,61 @@ def atualizar_perfil(
 @app.delete("/perfil/eu", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_perfil(
     db: Session = Depends(database.obter_base_de_dados), 
-    utilizador_email: str = Depends(obter_utilizador_atual)
+    utilizador_email: str = Depends(obter_utilizador_atual),
+    authorization: str = Header(None) # Para reencaminhar o token se necessário
 ):
     perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
     
+    # 1. Apaga primeiro todos os registos dependentes do perfil
+    db.query(models.PerfilLinkModel).filter(models.PerfilLinkModel.perfil_id == perfil.id).delete()
+    db.query(models.PerfilComunidadeModel).filter(models.PerfilComunidadeModel.perfil_id == perfil.id).delete()
+    db.query(models.PerfilProjetoModel).filter(models.PerfilProjetoModel.perfil_id == perfil.id).delete()
+    db.query(models.PerfilAtividadeModel).filter(models.PerfilAtividadeModel.perfil_id == perfil.id).delete()
+    db.query(models.PerfilTrofeuModel).filter(models.PerfilTrofeuModel.perfil_id == perfil.id).delete()
+    
+    # 2. Apaga o perfil principal
     db.delete(perfil)
     db.commit()
-    return None        
+
+    # 3. Notifica o Serviço de Autenticação (porta 8001) para apagar o utilizador/credenciais
+    try:
+        auth_service_url = "http://localhost:8001" 
+        headers = {"Authorization": authorization} if authorization else {}
+        with httpx.Client() as client:
+            client.delete(f"{auth_service_url}/users/me", headers=headers)
+    except Exception as e:
+        print(f"Erro ao comunicar com o serviço de autenticação para apagar o utilizador: {e}")
+
+    return None      
 
 @app.get("/perfil/eu", response_model=schemas.PerfilCompletoResponse)
 def obter_perfil_completo(db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
     perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
     
     if not perfil:
+        nome_base = utilizador_email.split('@')[0] if utilizador_email else "utilizador"
+        
         perfil = models.PerfilModel(
             utilizador_email=utilizador_email,
-            nome="Lia Monteiro",
-            arroba="@liamakesgames",
-            localizacao="São Paulo, Brasil",
-            biografia="Game designer, artista de pixels e colecionadora de ideias inacabadas. Criando pequenos mundos acolhedores na Godot.",
-            badge_funcao="FUNDADORA",
-            nivel=24,
-            xp_atual=11400,
-            xp_proximo_nivel=15000,
-            seguidores_qtd=284,
-            seguindo_qtd=96,
-            projetos_qtd=6,
-            contribuicoes_anuais=1248
+            nome="",                    
+            arroba=f"@{nome_base}",     
+            localizacao="",             
+            biografia="",               
+            badge_funcao="NOVO MEMBRO",
+            nivel=1,                    
+            xp_atual=0,                 
+            xp_proximo_nivel=1000,      
+            seguidores_qtd=0,
+            seguindo_qtd=0,
+            projetos_qtd=0,
+            contribuicoes_anuais=0
         )
         db.add(perfil)
         db.commit()
         db.refresh(perfil)
-        
-        db.add(models.PerfilLinkModel(perfil_id=perfil.id, rotulo="github.com/liamakes", url="https://github.com/liamakes"))
-        db.add(models.PerfilLinkModel(perfil_id=perfil.id, rotulo="/in/liamonteiro", url="https://linkedin.com/in/liamonteiro"))
-        db.add(models.PerfilLinkModel(perfil_id=perfil.id, rotulo="lsmaker.games", url="https://lsmaker.games"))
-        
-        db.add(models.PerfilComunidadeModel(perfil_id=perfil.id, nome="Dev Indie Brasil", membros="12,8 mil membros"))
-        db.add(models.PerfilComunidadeModel(perfil_id=perfil.id, nome="Godot em Português", membros="8,2 mil membros"))
-        db.add(models.PerfilComunidadeModel(perfil_id=perfil.id, nome="Pixel Art Club", membros="5,1 mil membros"))
-        db.add(models.PerfilComunidadeModel(perfil_id=perfil.id, nome="Women Who Make Games", membros="4,7 mil membros"))
-        
-        db.add(models.PerfilProjetoModel(perfil_id=perfil.id, titulo="Mossvale", papel="Criadora - Game Designer", progresso=75, status_badge="DEMO DISPONÍVEL", likes=1800))
-        db.add(models.PerfilProjetoModel(perfil_id=perfil.id, titulo="Tiny Alchemist", papel="Solo project • Pixel Art", progresso=45, status_badge="EM PRODUÇÃO", likes=842))
-        db.add(models.PerfilProjetoModel(perfil_id=perfil.id, titulo="Sunset Courier", papel="Programadora", progresso=100, status_badge="CONCLUÍDO", likes=389))
-        
-        db.add(models.PerfilAtividadeModel(
-            perfil_id=perfil.id,
-            descricao="Lia Monteiro publicou uma nova atualização em Mossvale: 'A floresta finalmente ganhou vida'",
-            tempo_atras="Hoje, 10:42 • Devlog, 45k",
-            likes=128,
-            comentarios_qtd=24,
-            comentario_destaque="A iluminação ficou incrível! O reflexo no lago dá outra dimensão para a cena."
-        ))
-        
-        db.add(models.PerfilTrofeuModel(perfil_id=perfil.id, titulo="Guardião de Histórias", descricao="Conclua a campanha Folclore Reimaginado.", concluido=False))
-        db.add(models.PerfilTrofeuModel(perfil_id=perfil.id, titulo="Primeiro lançamento", descricao="Publicou um projeto jogável.", concluido=True))
-        db.add(models.PerfilTrofeuModel(perfil_id=perfil.id, titulo="Favorito da semana", descricao="Projeto em destaque no Ludarium.", concluido=True))
-        db.add(models.PerfilTrofeuModel(perfil_id=perfil.id, titulo="Feedback valioso", descricao="100 comentários úteis.", concluido=True))
-        
-        db.commit()
-        db.refresh(perfil)
-        
+
     return perfil
 
 @app.post("/perfil/adicionar-xp")
@@ -185,3 +178,35 @@ async def obter_leaderboard(db: Session = Depends(database.obter_base_de_dados))
             "xp_atual": p.xp_atual
         })
     return ranking
+
+def atualizar_trofeus_automaticos(perfil, db):
+    """Verifica e atualiza o estado dos troféus com base no progresso atual do utilizador."""
+    regras_trofeus = {
+        "Primeiro Passo": True,
+        "Crítico de Jogos": perfil.xp_atual >= 75,
+        "Mestre do Nível 5": perfil.nivel >= 5,
+        "Explorador Global": perfil.nivel >= 10
+    }
+
+    trofeus_db = db.query(models.PerfilTrofeuModel).filter(models.PerfilTrofeuModel.perfil_id == perfil.id).all()
+    
+    for t in trofeus_db:
+        if t.titulo in regras_trofeus:
+            if regras_trofeus[t.titulo] and not t.concluido:
+                t.concluido = True
+                
+    db.commit()
+
+@app.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_utilizador_auth(
+    db: Session = Depends(database.obter_base_de_dados), 
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    # Procura e remove o utilizador da base de dados de autenticação pelo email do token
+    utilizador = db.query(models.UserModel).filter(models.UserModel.email == utilizador_email).first()
+    
+    if utilizador:
+        db.delete(utilizador)
+        db.commit()
+        
+    return None    

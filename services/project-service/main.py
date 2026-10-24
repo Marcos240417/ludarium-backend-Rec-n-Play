@@ -1,7 +1,7 @@
 import os
 import shutil
 import zipfile
-from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File, Form, Header
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 import models, database, schemas
 import httpx
-from fastapi import Header
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
@@ -42,6 +41,8 @@ with database.engine.begin() as conn:
     conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS poster_path VARCHAR;"))
     conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR;"))
     conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id VARCHAR;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS campaign_id INTEGER;"))
+    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS members VARCHAR;"))
 
 DIRETORIO_BUILDS = "sandbox_builds"
 DIRETORIO_POSTERS = "sandbox_posters"
@@ -60,15 +61,12 @@ def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # Tenta descodificar com a chave do projeto
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            # Fallback tolerante para aceitar qualquer token válido gerado pelo auth-service
             return "admin"
         return email
     except JWTError:
-        # Se falhar a validação estrita entre microservices, permite passar para evitar o 401 travado
         return "admin"
 
 @app.get("/")
@@ -78,7 +76,6 @@ def ler_raiz():
 @app.get("/projects", response_model=list[schemas.ProjectResponse])
 @app.get("/projects/", response_model=list[schemas.ProjectResponse])
 def listar_projetos(tag: str | None = Query(None), db: Session = Depends(database.get_db)):
-
     projetos = db.query(models.ProjectModel).all()
     
     if not projetos:
@@ -141,7 +138,7 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
     
     resultado = []
     for p in projetos:
-        p_tags = [t.strip() for t in p.tags.split(",") if t.strip()]
+        p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
         if tag and tag.lower() not in [t.lower() for t in p_tags]:
             continue
             
@@ -169,6 +166,8 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             "poster_path": p.poster_path,
             "owner": p.owner,
             "user_id": p.user_id,
+            "campaign_id": getattr(p, 'campaign_id', None),
+            "members": getattr(p, 'members', ""),
             "comments_count": len(comentarios_formatados),
             "comentarios": comentarios_formatados
         })
@@ -183,6 +182,8 @@ def criar_projeto_root(
     progress: int = Form(100),
     tags: str = Form(""),
     executavel_navegador: int | str = Form(0),
+    campaign_id: int | None = Form(None),
+    members: str = Form(""),
     poster: UploadFile | None = None,
     build_file: UploadFile | None = None,
     db: Session = Depends(database.get_db),
@@ -198,7 +199,6 @@ def criar_projeto_root(
 
     exec_nav_int = 1 if str(executavel_navegador).lower() in ["true", "1", "on"] else 0
 
-    # Processamento do poster
     poster_path = None
     if poster:
         os.makedirs(DIRETORIO_POSTERS, exist_ok=True)
@@ -208,7 +208,6 @@ def criar_projeto_root(
         with open(caminho_fisico_poster, "wb") as buffer:
             shutil.copyfileobj(poster.file, buffer)
 
-    # Processamento inteligente e robusto do ZIP de build
     caminho_extraido = None
     pasta_slug = title.lower().replace(" ", "_")
     
@@ -227,7 +226,6 @@ def criar_projeto_root(
         
         os.remove(zip_path)
         
-        # Procura por qualquer ficheiro HTML dentro das pastas extraídas e move-o para a raiz
         html_encontrado = None
         for root, dirs, files in os.walk(pasta_projeto):
             for file in files:
@@ -253,7 +251,9 @@ def criar_projeto_root(
         build_path=caminho_extraido,
         poster_path=poster_path,
         owner=utilizador_email,
-        user_id=utilizador_email
+        user_id=utilizador_email,
+        campaign_id=campaign_id,
+        members=members
     )
 
     db.add(novo_projeto)
@@ -274,6 +274,8 @@ def criar_projeto_root(
         "executavel_navegador": novo_projeto.executavel_navegador,
         "build_path": novo_projeto.build_path,
         "poster_path": novo_projeto.poster_path,
+        "campaign_id": getattr(novo_projeto, 'campaign_id', None),
+        "members": getattr(novo_projeto, 'members', ""),
         "comments_count": 0,
         "comentarios": []
     }
@@ -287,6 +289,15 @@ def excluir_projeto(
     p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+
+    dono = (p.owner or p.user_id or "").strip().lower()
+    atual = (utilizador_email or "").strip().lower()
+    
+    if atual != "admin" and dono != "" and dono != atual:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Não tem permissão para excluir este projeto."
+        )
 
     db.delete(p)
     db.commit()
@@ -302,7 +313,7 @@ def avaliar_projeto_estrela(project_id: int, db: Session = Depends(database.get_
     db.commit()
     db.refresh(p)
     
-    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()]
+    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
     
     return {
@@ -317,6 +328,8 @@ def avaliar_projeto_estrela(project_id: int, db: Session = Depends(database.get_
         "executavel_navegador": p.executavel_navegador,
         "build_path": p.build_path,
         "poster_path": p.poster_path,
+        "campaign_id": getattr(p, 'campaign_id', None),
+        "members": getattr(p, 'members', ""),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
@@ -327,7 +340,7 @@ def obter_projeto(project_id: int, db: Session = Depends(database.get_db)):
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     
-    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()]
+    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
     
     return {
@@ -342,6 +355,8 @@ def obter_projeto(project_id: int, db: Session = Depends(database.get_db)):
         "executavel_navegador": p.executavel_navegador,
         "build_path": p.build_path,
         "poster_path": p.poster_path,
+        "campaign_id": getattr(p, 'campaign_id', None),
+        "members": getattr(p, 'members', ""),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
@@ -361,6 +376,21 @@ def adicionar_comentario_projeto(project_id: int, comentario: schemas.Comentario
     db.add(novo_comentario)
     db.commit()
     db.refresh(novo_comentario)
+
+    if p.owner and p.owner != utilizador_email:
+        try:
+            with httpx.Client() as client:
+                client.post(
+                    "http://localhost:8002/notifications",
+                    params={
+                        "destinatario_email": p.owner,
+                        "conteudo": f"{utilizador_email.split('@')[0]} comentou no seu projeto '{p.title}'",
+                        "link_destino": "/frontend/home.html"
+                    }
+                )
+        except Exception as e:
+            print(f"Erro ao enviar notificação automática: {e}")
+
     return novo_comentario
 
 @app.get("/campaigns/featured", response_model=schemas.CampaignResponse)
@@ -387,18 +417,33 @@ def atualizar_projeto(
     project_id: int,
     projeto_dados: schemas.ProjectUpdate,
     db: Session = Depends(database.get_db),
-    token: str | None = Depends(oauth2_scheme)
+    utilizador_email: str = Depends(obter_utilizador_atual)
 ):
     p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
     
+    dono = (p.owner or p.user_id or "").strip().lower()
+    atual = (utilizador_email or "").strip().lower()
+    
+    if atual != "admin" and dono != "" and dono != atual:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Não tem permissão para editar este projeto."
+        )
+
     if projeto_dados.title is not None:
         p.title = projeto_dados.title
     if projeto_dados.description is not None:
         p.description = projeto_dados.description
     if projeto_dados.progress is not None:
         p.progress = projeto_dados.progress
+    if projeto_dados.tags is not None:
+        p.tags = projeto_dados.tags
+    if projeto_dados.campaign_id is not None:
+        p.campaign_id = projeto_dados.campaign_id
+    if projeto_dados.members is not None:
+        p.members = projeto_dados.members
     
     db.commit()
     db.refresh(p)
@@ -418,6 +463,8 @@ def atualizar_projeto(
         "executavel_navegador": p.executavel_navegador,
         "build_path": p.build_path,
         "poster_path": p.poster_path,
+        "campaign_id": getattr(p, 'campaign_id', None),
+        "members": getattr(p, 'members', ""),
         "owner": p.owner,
         "user_id": p.user_id,
         "comments_count": len(comentarios_formatados),
@@ -428,12 +475,7 @@ def atualizar_projeto(
 async def testar_projeto(
     project_id: int, 
     authorization: str = Header(None),
-    # ... os seus parâmetros atuais de base de dados e dependências ...
 ):
-    # --- 1. A sua lógica atual para registar o teste ou feedback do jogo ---
-    # (ex: guardar o resultado do teste na base de dados, db.commit())
-
-    # --- 2. RECOMPENSA AUTOMÁTICA DE XP (Ex: +75 XP por testar um jogo no Sandbox) ---
     if authorization:
         try:
             async with httpx.AsyncClient() as client:
@@ -446,3 +488,36 @@ async def testar_projeto(
             print(f"Erro ao creditar XP pelo teste do jogo: {e}")
 
     return {"mensagem": "Teste registado com sucesso e +75 XP adicionados ao seu perfil!"}
+
+@app.patch("/projects/{project_id}/favorito", response_model=schemas.ProjectResponse)
+def alternar_favorito(project_id: int, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+    
+    p.favorito = 0 if p.favorito == 1 else 1
+    db.commit()
+    db.refresh(p)
+    
+    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
+    comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
+    
+    return {
+        "id": p.id,
+        "title": p.title,
+        "studio": p.studio,
+        "description": p.description,
+        "progress": p.progress,
+        "tags": p_tags,
+        "likes": p.likes,
+        "favorito": p.favorito,
+        "executavel_navegador": p.executavel_navegador,
+        "build_path": p.build_path,
+        "poster_path": p.poster_path,
+        "campaign_id": getattr(p, 'campaign_id', None),
+        "members": getattr(p, 'members', ""),
+        "owner": p.owner,
+        "user_id": p.user_id,
+        "comments_count": len(comentarios_formatados),
+        "comentarios": comentarios_formatados
+    }

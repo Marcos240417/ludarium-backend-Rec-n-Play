@@ -1,5 +1,16 @@
 from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
 
+class NotificationResponse(BaseModel):
+    id: int
+    content: str
+    link: Optional[str] = None
+    is_read: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 class ComentarioCreate(BaseModel):
     autor: str
     autor_arroba: str

@@ -15,6 +15,7 @@ class CampanhaModel(Base):
     formato = Column(String, default="Equipe")
     progresso_porcentagem = Column(Integer, default=0)
     dias_restantes = Column(Integer, default=12)
+    ativa = Column(Boolean, default=True)
 
     objetivos = relationship("ObjetivoCampanhaModel", back_populates="campanha", cascade="all, delete-orphan")
 

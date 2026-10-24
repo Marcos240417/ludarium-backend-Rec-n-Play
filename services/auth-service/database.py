@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Usamos o novo driver 'psycopg' (v3) que resolve problemas de codificação no Windows
+# Conexão PostgreSQL utilizando o driver otimizado 'psycopg' (v3)
 SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://postgres:123@localhost:5432/ludarium_auth"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)

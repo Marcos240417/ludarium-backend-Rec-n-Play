@@ -2,17 +2,26 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Utilize a sua palavra-passe real do PostgreSQL
-SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://postgres:123@localhost:5432/ludarium_auth"
+# Defina a URL da base de dados SQLite (ou mantenha a que já utilizava)
+DATABASE_URL = "sqlite:///./comunidade.db"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# 1. Crie o engine primeiro
+engine = create_engine(
+    DATABASE_URL, connect_args={"check_same_thread": False}
+)
+
+# 2. Depois crie o SessionLocal utilizando o engine criado acima
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-def obter_base_de_dados():
+# 3. Função para obter a sessão da base de dados (get_db)
+def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+# ADICIONE ESTA LINHA: Permite que tanto 'get_db' quanto 'obter_base_de_dados' funcionem perfeitamente
+obter_base_de_dados = get_db

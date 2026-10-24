@@ -10,6 +10,24 @@ __pycache__/
 */**/__pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
+
+# Testes e Cobertura (Pytest)
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Liners e Análise Estática (Mypy, Ruff, etc.)
+.mypy_cache/
+.ruff_cache/
+
+# Empacotamento e Distribuição Python
+build/
+dist/
+*.egg-info/
+.eggs/
 
 # Builds locais e posters em sandbox
 sandbox_builds/

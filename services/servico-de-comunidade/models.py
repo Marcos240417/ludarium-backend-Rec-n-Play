@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
+class NotificationModel(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False)  # Destinatário da notificação
+    content = Column(Text, nullable=False)                 # Texto da notificação
+    link = Column(String, nullable=True)                   # URL opcional para redirecionamento
+    is_read = Column(Integer, default=0)                   # 0 = Não lida, 1 = Lida
+    created_at = Column(DateTime, default=datetime.utcnow)
 class PublicacaoModel(Base):
     __tablename__ = "publicacoes_comunidade"
 

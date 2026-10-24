@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ludarium - Plataforma de Jogos Independentes</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="home.css">
 </head>
 <body onload="verificarSessaoDashboard()">
 
@@ -13,12 +13,24 @@
             <span>L</span> LUDARIUM
         </div>
             <ul class="nav-links">
-                <li><a href="http://127.0.0.1:8081/frontend/index.html" class="active">Projetos</a></li>
+                <li><a href="http://127.0.0.1:8081/frontend/home.html" class="active">Projetos</a></li>
                 <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
                 <li><a href="http://127.0.0.1:8003/frontend/campanhas.html" class="active">Campanhas</a></li>
                 <li><a href="http://127.0.0.1:8004/frontend/perfil.html" class="active">Perfil</a></li>
             </ul>
         <div class="nav-actions">
+            <!-- Ícone de Notificações com Dropdown -->
+            <div class="nav-notifications" style="position: relative; margin-right: 15px; cursor: pointer; display: flex; align-items: center;" onclick="toggleNotificationsMenu()" title="Notificações">
+                <span style="font-size: 1.2rem;">🔔</span>
+                <span id="notificationBadge" style="position: absolute; top: -2px; right: -6px; background: #ef4444; color: white; font-size: 0.65rem; padding: 1px 5px; border-radius: 50%; display: none; font-weight: bold;">0</span>
+                <div id="notificationsDropdown" style="display: none; position: absolute; right: 0; top: 40px; width: 320px; background: #1a1829; border: 1px solid #7c3aed; border-radius: 8px; padding: 12px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #d8b4fe; border-bottom: 1px solid #3f3d56; padding-bottom: 6px;">Centro de Notificações</h4>
+                    <div id="notificationsList" style="max-height: 250px; overflow-y: auto; font-size: 0.85rem; color: #fff;">
+                        <span style="color: #9ca3af;">A carregar notificações...</span>
+                    </div>
+                </div>
+            </div>
+
             <div id="navUserProfile" style="display: flex; align-items: center; gap: 10px; margin-right: 15px; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3); padding: 5px 12px; border-radius: 20px;">
                 <div id="navUserAvatar" style="width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; overflow: hidden;"></div>
                 <span id="navUsername" style="color: #d8b4fe; font-weight: 500; font-size: 0.95rem;"></span>
@@ -32,11 +44,12 @@
     </nav>
 
     <div class="main-content">
+        <!-- Barra de Pesquisa Unificada & Painel de Moderação -->
         <div id="adminSearchBox" style="display: none; background: #1a1829; border: 1px solid #7c3aed; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-            <h3 style="margin-top: 0; color: #d8b4fe; font-size: 1rem; margin-bottom: 12px;">🔍 Painel de Moderação: Buscar Utilizador</h3>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="adminSearchInput" placeholder="Digite o username ou email do utilizador..." style="flex: 1; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; outline: none;">
-                <button onclick="pesquisarUtilizadorAdmin()" style="background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">Pesquisar</button>
+            <h3 style="margin-top: 0; color: #d8b4fe; font-size: 1rem; margin-bottom: 12px;">🔍 Pesquisa de Projetos & Moderação</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="adminSearchInput" placeholder="Digite o nome do projeto (pesquisa instantânea) ou username/email para buscar utilizador..." oninput="filtrarProjetosTexto()" style="flex: 1; min-width: 280px; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; outline: none; font-size: 0.9rem;">
+                <button onclick="pesquisarUtilizadorAdmin()" style="background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Buscar Utilizador</button>
             </div>
             <div id="adminSearchResult" style="margin-top: 15px; font-size: 0.9rem; color: #fff;"></div>
         </div>
@@ -45,6 +58,28 @@
             <h4 style="margin-top: 0; color: #d8b4fe; font-size: 0.95rem;">📬 Avisos e Mensagens Privadas da Administração</h4>
             <div id="myMessagesList" style="font-size: 0.9rem; color: #e5e7eb;">
                 <span style="color: #9ca3af;">A carregar mensagens...</span>
+            </div>
+        </div>
+
+        <!-- Filtros Rápidos por Tags (Sem barra de pesquisa duplicada) -->
+        <div class="filters-container" style="display: flex; gap: 15px; margin-bottom: 25px; align-items: center; flex-wrap: wrap; background: #1a1829; padding: 15px; border-radius: 12px; border: 1px solid #7c3aed;">
+            <span style="color: #d8b4fe; font-size: 0.9rem; font-weight: bold;">Filtros por Tags:</span>
+            <div id="tagsFilterList" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="filtrarPorTag('')" style="background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Todos</button>
+                <button onclick="filtrarPorTag('unity')" style="background: #0f0e17; border: 1px solid #3f3d56; color: #d8b4fe; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Unity</button>
+                <button onclick="filtrarPorTag('godot')" style="background: #0f0e17; border: 1px solid #3f3d56; color: #d8b4fe; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Godot</button>
+                <button onclick="filtrarPorTag('2d')" style="background: #0f0e17; border: 1px solid #3f3d56; color: #d8b4fe; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">2D</button>
+                <button onclick="filtrarPorTag('pixel art')" style="background: #0f0e17; border: 1px solid #3f3d56; color: #d8b4fe; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Pixel Art</button>
+            </div>
+        </div>
+
+        <!-- Secção de Tabela de Líderes (Leaderboard) -->
+        <div class="leaderboard-container" style="background: #1a1829; border: 1px solid #7c3aed; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+            <h3 style="margin-top: 0; color: #d8b4fe; font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                🏆 Top Testadores & Criadores (Leaderboard XP)
+            </h3>
+            <div id="leaderboardList" style="display: flex; flex-direction: column; gap: 8px;">
+                <span style="color: #9ca3af; font-size: 0.9rem;">A carregar ranking de XP...</span>
             </div>
         </div>
 
@@ -77,7 +112,7 @@
 
     <!-- MODAL DE NOVO PROJETO -->
     <div id="modalProjeto" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
             <div class="modal-header">
                 <div>
                     <span class="modal-tag">NOVO PROJETO</span>
@@ -88,8 +123,10 @@
             <form id="projectForm" onsubmit="enviarNovoProjeto(event)">
                 <label>Nome do projeto *</label>
                 <input type="text" id="projTitle" placeholder="Ex.: Tiny Alchemist" required>
+                
                 <label>Descrição curta *</label>
                 <textarea id="projDesc" rows="3" placeholder="Conte em poucas linhas o que torna sua ideia especial." required></textarea>
+                
                 <div class="form-grid-2">
                     <div>
                         <label>Ficheiro .ZIP do Jogo (Build Web) *</label>
@@ -100,6 +137,7 @@
                         <input type="file" id="projPoster" accept="image/*">
                     </div>
                 </div>
+                
                 <div class="form-grid-2" style="margin-top: 10px;">
                     <div>
                         <label>Tags (separadas por vírgula)</label>
@@ -110,18 +148,40 @@
                         <input type="number" id="projProgress" value="80" min="0" max="100">
                     </div>
                 </div>
+
+                <div style="margin-top: 12px; margin-bottom: 10px;">
+                    <label style="display: block; color: #d8b4fe; font-size: 0.85rem; margin-bottom: 5px;">Vincular a Game Jam / Campanha (Opcional)</label>
+                    <select id="projCampaignSelect" style="width: 100%; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px;">
+                        <option value="">Nenhuma (Projeto Independente Geral)</option>
+                    </select>
+                </div>
+
+                <div style="margin-top: 10px; margin-bottom: 15px; background: #0f0e17; padding: 12px; border-radius: 8px; border: 1px solid #3f3d56;">
+                    <label style="display: block; color: #d8b4fe; font-size: 0.85rem; margin-bottom: 6px;">👥 Integrantes da Equipe (Pesquisar e Adicionar)</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="memberSearchInput" placeholder="Digite o username do utilizador..." style="flex: 1; padding: 8px; background: #1a1829; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; outline: none; font-size: 0.85rem;">
+                        <button type="button" onclick="pesquisarMembroEquipe()" style="background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Pesquisar</button>
+                    </div>
+                    <div id="memberSearchResult" style="font-size: 0.85rem; margin-bottom: 8px; color: #a855f7;"></div>
+                    <div id="selectedTeamList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <span style="color: #9ca3af; font-size: 0.8rem;">Nenhum integrante adicionado ainda.</span>
+                    </div>
+                    <input type="hidden" id="projMembersField" name="members" value="">
+                </div>
+
                 <div class="checkbox-wrapper">
                     <input type="checkbox" id="projExecutavel" value="1" checked>
                     <label for="projExecutavel" style="margin-top: 0; cursor: pointer;">Pode ser executado no navegador (gerar build em sandbox)</label>
                 </div>
-                <button type="submit" class="btn-primary">Enviar para análise e publicação</button>
+                
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Enviar para análise e publicação</button>
             </form>
         </div>
     </div>
 
     <!-- MODAL DE EDITAR PROJETO -->
     <div id="modalEditarProjeto" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
             <div class="modal-header">
                 <div>
                     <span class="modal-tag">EDITAR PROJETO</span>
@@ -131,10 +191,13 @@
             </div>
             <form id="editProjectForm" onsubmit="salvarEdicaoProjeto(event)">
                 <input type="hidden" id="editProjId">
+                
                 <label>Nome do projeto *</label>
                 <input type="text" id="editProjTitle" required>
+                
                 <label>Descrição curta *</label>
                 <textarea id="editProjDesc" rows="3" required></textarea>
+                
                 <div class="form-grid-2">
                     <div>
                         <label>Tags (separadas por vírgula)</label>
@@ -145,7 +208,28 @@
                         <input type="number" id="editProjProgress" min="0" max="100">
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Guardar Alterações</button>
+
+                <div style="margin-top: 12px; margin-bottom: 10px;">
+                    <label style="display: block; color: #d8b4fe; font-size: 0.85rem; margin-bottom: 5px;">Vincular a Game Jam / Campanha</label>
+                    <select id="editProjCampaignSelect" style="width: 100%; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px;">
+                        <option value="">Nenhuma (Projeto Independente Geral)</option>
+                    </select>
+                </div>
+
+                <div style="margin-top: 10px; margin-bottom: 15px; background: #0f0e17; padding: 12px; border-radius: 8px; border: 1px solid #3f3d56;">
+                    <label style="display: block; color: #d8b4fe; font-size: 0.85rem; margin-bottom: 6px;">👥 Integrantes da Equipe (Gerir Colaboradores)</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="editMemberSearchInput" placeholder="Digite o username..." style="flex: 1; padding: 8px; background: #1a1829; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; outline: none; font-size: 0.85rem;">
+                        <button type="button" onclick="pesquisarMembroEquipeEdicao()" style="background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Pesquisar</button>
+                    </div>
+                    <div id="editMemberSearchResult" style="font-size: 0.85rem; margin-bottom: 8px; color: #a855f7;"></div>
+                    <div id="editSelectedTeamList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <span style="color: #9ca3af; font-size: 0.8rem;">Nenhum integrante adicionado.</span>
+                    </div>
+                    <input type="hidden" id="editProjMembersField" name="members" value="">
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Alterações</button>
             </form>
         </div>
     </div>
@@ -169,7 +253,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE FEEDBACK PÓS-JOGO (NOVO) -->
+    <!-- MODAL DE FEEDBACK PÓS-JOGO -->
     <div id="modal-feedback-jogo" class="modal-overlay" style="display: none; align-items: center; justify-content: center;">
         <div class="modal-content" style="max-width: 450px; background: #161525; border: 1px solid #7c3aed; border-radius: 12px; padding: 25px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -204,6 +288,6 @@
         </div>
     </div>
 
-    <script src="script-home.js"></script>
+    <script src="home.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@ const AUTH_SERVICE_URL = "http://localhost:8001";
 const PROJECT_SERVICE_URL = "http://localhost:8081";
 const SERVICO_DE_COMUNIDADE_URL = "http://localhost:8002";
 const SERVICO_DE_CAMPANHAS_URL = 'http://localhost:8003';
-const SERVICO_DE_CAMPANHAS = SERVICO_DE_CAMPANHAS_URL; // Alias para compatibilidade com as funções
+const SERVICO_DE_CAMPANHAS = SERVICO_DE_CAMPANHAS_URL;
 const SERVICO_DE_PERFIL_URL = "http://localhost:8004";
 const GATEWAY_URL = "http://localhost:8005";
 
@@ -10,20 +10,16 @@ const GATEWAY_URL = "http://localhost:8005";
 let modoRegistoAtivo = false;
 
 /**
- * Verifica se já existe sessão ativa ao abrir a página de login
+ * Nota: A verificação automática ao carregar foi removida para permitir 
+ * que a tela de login fique sempre acessível. O redirecionamento agora
+ * ocorre exclusivamente após o sucesso do login.
  */
-function verificarSessaoLogin() {
-    const token = localStorage.getItem('ludarium_token');
-    if (token) {
-        window.location.href = 'index.html';
-    }
-}
 
 /**
  * Alterna dinamicamente os campos e a ação do botão entre Entrar e Criar Conta
  */
 function alternarModoAuth(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     modoRegistoAtivo = !modoRegistoAtivo;
 
     const title = document.getElementById('formTitle');
@@ -35,7 +31,7 @@ function alternarModoAuth(event) {
     const labelUserEmail = document.getElementById('labelUserEmail');
     const suggestionsBox = document.getElementById('suggestionsBox');
 
-    suggestionsBox.style.display = 'none';
+    if (suggestionsBox) suggestionsBox.style.display = 'none';
 
     if (modoRegistoAtivo) {
         title.textContent = 'Junte-se ao Ludarium.';
@@ -123,6 +119,8 @@ async function fazerRegisto() {
 function exibirSugestoesUtilizador(nomeTentado) {
     const suggestionsBox = document.getElementById('suggestionsBox');
     const suggestionsList = document.getElementById('suggestionsList');
+    if (!suggestionsBox || !suggestionsList) return;
+
     suggestionsList.innerHTML = '';
 
     const sufixos = [
@@ -150,8 +148,13 @@ function exibirSugestoesUtilizador(nomeTentado) {
  * Realiza o login e redireciona para a home
  */
 async function fazerLogin() {
-    const user = document.getElementById('loginUser').value;
-    const pass = document.getElementById('loginPass').value;
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+
+    if (!user || !pass) {
+        alert('Por favor, preencha o utilizador/email e a senha.');
+        return;
+    }
 
     try {
         const response = await fetch(`${GATEWAY_URL}/login`, {
@@ -165,7 +168,8 @@ async function fazerLogin() {
         const data = await response.json();
         localStorage.setItem('ludarium_token', data.access_token);
 
-        window.location.href = 'index.html';
+        // CORRIGIDO: Redireciona para index.html levando o token na URL
+        window.location.href = `${PROJECT_SERVICE_URL}/frontend/home.html?token=${data.access_token}`;
     } catch (error) {
         alert('Erro no login: ' + error.message);
     }

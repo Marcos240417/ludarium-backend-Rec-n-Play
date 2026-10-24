@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import models, database, schemas
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+import httpx
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
@@ -158,12 +159,13 @@ def criar_campanha(
     return nova_campanha
 
 @app.patch("/objetivos/{objetivo_id}/concluir", response_model=schemas.ObjetivoResponse)
-def alternar_conclusao_objetivo(
+async def concluir_objetivo(
     objetivo_id: int, 
     db: Session = Depends(database.obter_base_de_dados), 
-    utilizador_email: str = Depends(oauth2_scheme)
+    utilizador_email: str = Depends(obter_utilizador_atual),
+    authorization: str = Header(None)
 ):
-    """Alterna o estado de conclusão de uma tarefa no checklist do utilizador autenticado"""
+    """Alterna o estado de conclusão de uma tarefa no checklist e atribui recompensa de XP se concluído"""
     obj = db.query(models.ObjetivoCampanhaModel).filter(models.ObjetivoCampanhaModel.id == objetivo_id).first()
     if not obj:
         raise HTTPException(status_code=404, detail="Objetivo não encontrado")
@@ -171,22 +173,8 @@ def alternar_conclusao_objetivo(
     obj.concluido = not obj.concluido
     db.commit()
     db.refresh(obj)
-    return obj
 
-import httpx
-from fastapi import Header
-
-@app.patch("/objetivos/{objetivo_id}/concluir")
-async def concluir_objetivo(
-    objetivo_id: int, 
-    authorization: str = Header(None),
-    # ... outros parâmetros de dependência da base de dados ...
-):
-    # --- 1. A sua lógica atual para marcar o objetivo como concluído ---
-    # (ex: objetivo.concluido = True, db.commit())
-
-    # --- 2. RECOMPENSA AUTOMÁTICA DE XP (Ex: +100 XP por concluir objetivo) ---
-    if authorization:
+    if obj.concluido and authorization:
         try:
             async with httpx.AsyncClient() as client:
                 await client.post(
@@ -197,4 +185,4 @@ async def concluir_objetivo(
         except Exception as e:
             print(f"Erro ao creditar XP da campanha: {e}")
 
-    return {"mensagem": "Objetivo concluído com sucesso e XP atribuído!"}    
+    return obj

@@ -346,3 +346,50 @@ def apagar_mensagem(
     db.delete(mensagem)
     db.commit()
     return None
+
+@app.get("/notifications", response_model=list[schemas.NotificationResponse])
+def listar_notificacoes(db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    notificacoes = db.query(models.NotificationModel).filter(
+        models.NotificationModel.user_id == utilizador_email
+    ).order_by(models.NotificationModel.created_at.desc()).all()
+    return notificacoes
+
+@app.patch("/notifications/{notification_id}/read")
+def marcar_notificacao_lida(notification_id: int, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    notificacao = db.query(models.NotificationModel).filter(
+        models.NotificationModel.id == notification_id,
+        models.NotificationModel.user_id == utilizador_email
+    ).first()
+    
+    if not notificacao:
+        raise HTTPException(status_code=404, detail="Notificação não encontrada.")
+    
+    notificacao.is_read = 1
+    db.commit()
+    return {"message": "Notificação marcada como lida com sucesso!"}   
+
+@app.post("/notifications", status_code=status.HTTP_201_CREATED)
+def criar_notificacao_automatica(
+    destinatario_email: str,
+    conteudo: str,
+    link_destino: str | None = None,
+    db: Session = Depends(database.get_db)
+):
+    """
+    Endpoint interno ou externo para injetar uma nova notificação para um utilizador.
+    """
+    nova_notificacao = models.NotificationModel(
+        user_id=destinatario_email,
+        content=conteudo,
+        link=link_destino,
+        is_read=0
+    )
+    
+    db.add(nova_notificacao)
+    db.commit()
+    db.refresh(nova_notificacao)
+    
+    return {
+        "mensagem": "Notificação criada com sucesso!",
+        "id": nova_notificacao.id
+    }     

@@ -1,11 +1,10 @@
 from pydantic import BaseModel
-
-from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class LinkUpdateSchema(BaseModel):
     rotulo: str
     url: str
+
     class Config:
         from_attributes = True
 
@@ -15,21 +14,22 @@ class PerfilUpdate(BaseModel):
     localizacao: Optional[str] = None
     biografia: Optional[str] = None
     badge_funcao: Optional[str] = None
-    links: Optional[list[LinkUpdateSchema]] = None # Adicionado suporte a links
+    links: Optional[List[LinkUpdateSchema]] = None
 
     class Config:
         from_attributes = True
 
-# (Mantenha os outros schemas existentes: LinkResponse, ComunidadeResponse, etc.)
 class LinkResponse(BaseModel):
     rotulo: str
     url: str
+
     class Config:
         from_attributes = True
 
 class ComunidadeResponse(BaseModel):
     nome: str
     membros: str
+
     class Config:
         from_attributes = True
 
@@ -39,6 +39,7 @@ class ProjetoDestaqueResponse(BaseModel):
     progresso: int
     status_badge: str
     likes: int
+
     class Config:
         from_attributes = True
 
@@ -47,7 +48,8 @@ class AtividadeResponse(BaseModel):
     tempo_atras: str
     likes: int
     comentarios_qtd: int
-    comentario_destaque: str | None = None
+    comentario_destaque: Optional[str] = None
+
     class Config:
         from_attributes = True
 
@@ -55,6 +57,7 @@ class TrofeuResponse(BaseModel):
     titulo: str
     descricao: str
     concluido: bool
+
     class Config:
         from_attributes = True
 
@@ -73,11 +76,11 @@ class PerfilCompletoResponse(BaseModel):
     seguindo_qtd: int
     projetos_qtd: int
     contribuicoes_anuais: int
-    links: list[LinkResponse] = []
-    comunidades: list[ComunidadeResponse] = []
-    projetos_destaque: list[ProjetoDestaqueResponse] = []
-    atividades: list[AtividadeResponse] = []
-    trofeus: list[TrofeuResponse] = []
+    links: List[LinkResponse] = []
+    comunidades: List[ComunidadeResponse] = []
+    projetos_destaque: List[ProjetoDestaqueResponse] = []
+    atividades: List[AtividadeResponse] = []
+    trofeus: List[TrofeuResponse] = []
 
     class Config:
         from_attributes = True

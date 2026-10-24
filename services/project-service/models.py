@@ -16,10 +16,10 @@ class ProjectModel(Base):
     executavel_navegador = Column(Integer, default=0)
     build_path = Column(String, nullable=True)
     poster_path = Column(String, nullable=True)
-    
-    # Adicione apenas estas duas linhas para o modelo aceitar o dono do projeto:
+    campaign_id = Column(Integer, nullable=True)
     owner = Column(String, nullable=True)
     user_id = Column(String, nullable=True)
+    members = Column(String, default="")
 
     comentarios = relationship("ProjectCommentModel", back_populates="projeto", cascade="all, delete-orphan")
 

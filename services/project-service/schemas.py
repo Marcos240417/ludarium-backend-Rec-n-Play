@@ -26,6 +26,8 @@ class ProjectResponse(BaseModel):
     executavel_navegador: Optional[int] = 0
     build_path: Optional[str] = None
     poster_path: Optional[str] = None
+    campaign_id: Optional[int] = None  # Adicionado para retornar a campanha vinculada
+    members: Optional[str] = ""          # Adicionado para retornar a lista de colaboradores
     owner: Optional[str] = None
     user_id: Optional[str] = None
     comments_count: Optional[int] = 0
@@ -38,6 +40,9 @@ class ProjectUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     progress: Optional[int] = None
+    tags: Optional[str] = None
+    campaign_id: Optional[int] = None
+    members: Optional[str] = None
 
 class CampaignResponse(BaseModel):
     id: int

@@ -2,6 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil do Utilizador - Ludarium</title>
     <link rel="stylesheet" href="perfil.css">
 </head>
@@ -9,7 +10,7 @@
     <header class="navbar">
         <div class="logo">🎮 Ludarium</div>
         <ul class="nav-links">
-            <li><a href="http://127.0.0.1:8081/frontend/index.html">Projetos</a></li>
+            <li><a href="http://127.0.0.1:8081/frontend/home.html">Projetos</a></li>
             <li><a href="http://127.0.0.1:8002/frontend/community.html">Comunidade</a></li>
             <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
             <li><a href="http://127.0.0.1:8004/frontend/perfil.html" class="active">Perfil</a></li>
@@ -46,7 +47,7 @@
                         <input type="text" id="input-localizacao" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
 
                         <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Biografia:</label>
-                        <textarea id="input-biografia" rows="3" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;"></textarea>
+                        <textarea id="input-biografia" rows="3" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px; resize: none;"></textarea>
 
                         <label style="display:block; margin-bottom:0.3rem; font-size:0.85rem; color:#94a3b8;">Link 1 (Ex: GitHub URL):</label>
                         <input type="text" id="input-link1-url" style="width:100%; padding:0.5rem; margin-bottom:0.8rem; background:#1e293b; border:1px solid #334155; color:#fff; border-radius:4px;">
@@ -64,14 +65,14 @@
             </div>
 
             <div class="profile-stats-card">
-                <span id="badge-funcao" class="badge">FUNDADORA</span>
-                <h3>Nível <span id="profile-level">24</span></h3>
-                <p>XP: <span id="profile-xp">11400</span> / <span id="profile-xp-next">15000</span></p>
+                <span id="badge-funcao" class="badge">NOVO MEMBRO</span>
+                <h3>Nível <span id="profile-level">1</span></h3>
+                <p>XP: <span id="profile-xp">0</span> / <span id="profile-xp-next">1000</span></p>
                 <div class="stats-grid">
-                    <div><strong id="stat-seguidores">284</strong> Seguidores</div>
-                    <div><strong id="stat-seguindo">96</strong> Seguindo</div>
-                    <div><strong id="stat-projetos">6</strong> Projetos</div>
-                    <div><strong id="stat-contribuicoes">1248</strong> Contribuições</div>
+                    <div><strong id="stat-seguidores">0</strong> Seguidores</div>
+                    <div><strong id="stat-seguindo">0</strong> Seguindo</div>
+                    <div><strong id="stat-projetos">0</strong> Projetos</div>
+                    <div><strong id="stat-contribuicoes">0</strong> Contribuições</div>
                 </div>
             </div>
         </section>

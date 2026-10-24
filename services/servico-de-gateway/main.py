@@ -137,20 +137,28 @@ async def gw_skills(request: Request):
 async def gw_messages(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["comunidade"], request, f"messages/{path}")
 
-# --- Rotas de Campanhas e Desafios ---
+# --- Rotas de Campanhas e Desafios (Atualizadas) ---
 @app.api_route("/progresso-usuario", methods=["GET"])
 async def gw_progresso(request: Request):
     return await reencaminhar_pedido(SERVICOS["campanhas"], request, "progresso-usuario")
 
-@app.api_route("/campanhas", methods=["GET"])
+@app.api_route("/campanhas", methods=["GET", "POST"])
 async def gw_campanhas(request: Request):
     return await reencaminhar_pedido(SERVICOS["campanhas"], request, "campanhas")
 
-@app.api_route("/objetivos/{path:path}", methods=["GET", "PATCH"])
+@app.api_route("/objetivos/{path:path}", methods=["GET", "POST", "PATCH", "DELETE"])
 async def gw_objetivos(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["campanhas"], request, f"objetivos/{path}")
 
 # --- Rotas de Utilizadores / Pesquisa Admin ---
-@app.api_route("/users/{path:path}", methods=["GET"])
+@app.api_route("/users/{path:path}", methods=["GET", "DELETE"])
 async def gw_users(request: Request, path: str):
     return await reencaminhar_pedido(SERVICOS["auth"], request, f"users/{path}")
+
+@app.api_route("/notifications", methods=["GET", "POST"])
+async def gw_notifications(request: Request):
+    return await reencaminhar_pedido(SERVICOS["comunidade"], request, "notifications")
+
+@app.api_route("/notifications/{path:path}", methods=["GET", "POST", "PATCH", "DELETE"])
+async def gw_notifications_sub(request: Request, path: str):
+    return await reencaminhar_pedido(SERVICOS["comunidade"], request, f"notifications/{path}")
