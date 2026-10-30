@@ -65,7 +65,7 @@ function definirBotaoCarregamento(botao, aCarregar, textoOriginal = "Guardar Alt
  * Função auxiliar para obter o token JWT de forma segura
  */
 function obterToken() {
-    let token = localStorage.getItem('ludarium_token');
+    let token = localStorage.getItem('ludarium_token') || localStorage.getItem('access_token');
     if (!token) {
         window.location.href = 'login.html';
     }
@@ -73,8 +73,24 @@ function obterToken() {
 }
 
 /**
- * ⚡ CORREÇÃO CRUCIAL: Captura o token da URL IMEDIATAMENTE quando o script é lido,
- * garantindo que o localStorage é preenchido ANTES do 'onload' da página disparar.
+ * Extrai o utilizador atual diretamente do token JWT de forma síncrona e segura
+ */
+function obterUtilizadorAtualDoToken() {
+    const token = obterToken();
+    if (!token) return '';
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        const payload = JSON.parse(jsonPayload);
+        return (payload.sub || payload.email || payload.username || '').trim().toLowerCase();
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
+ * Captura o token da URL IMEDIATAMENTE quando o script é lido
  */
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -92,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const linksMenu = document.querySelectorAll('.nav-links a');
     linksMenu.forEach(link => {
         link.addEventListener('click', (e) => {
-            const token = localStorage.getItem('ludarium_token');
+            const token = obterToken();
             if (token) {
                 e.preventDefault();
                 try {
@@ -106,7 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Event listener para o formulário de feedback pós-jogo
     const formFeedback = document.getElementById('form-feedback-jogo');
     if (formFeedback) {
         formFeedback.addEventListener('submit', async function(event) {
@@ -118,32 +133,49 @@ document.addEventListener("DOMContentLoaded", () => {
             await submeterFeedbackJogo(projectId, nota, comentario);
         });
     }
+
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('notificationsDropdown');
+        const notifContainer = document.querySelector('.nav-notifications');
+        if (dropdown && dropdown.style.display === 'block' && notifContainer && !notifContainer.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            fecharModalProjeto();
+            fecharModalEditar();
+            closeAdminMessageModal();
+            fecharModalFeedbackSemXP();
+            const dropdown = document.getElementById('notificationsDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    });
 });
 
 /**
  * Verifica a sessão ao carregar a página principal (home.html)
  */
 async function verificarSessaoDashboard() {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
-    }
+    const token = obterToken();
+    if (!token) return;
     
-    await atualizarPerfilMenu(token);
-    carregarProjetosHome();
-    carregarMensagensPrivadas();
-    verificarPermissoesAdmin();
-    carregarNotificacoes();
-    carregarCampanhasNoSelect();
-    carregarLeaderboard();
+    atualizarPerfilMenu(token).catch(e => console.warn('Aviso: Perfil indisponível', e));
+    carregarProjetosHome().catch(e => console.error('Erro ao carregar projetos:', e));
+    carregarMensagensPrivadas().catch(e => console.warn('Aviso: Mensagens indisponíveis', e));
+    carregarProjetosSobInspecaoUsuario().catch(e => console.warn('Aviso: Inspeções indisponíveis', e));
+    verificarPermissoesAdmin().catch(e => console.warn('Aviso: Permissões admin indisponíveis', e));
+    carregarNotificacoes().catch(e => console.warn('Aviso: Notificações indisponíveis', e));
+    carregarCampanhasNoSelect().catch(e => console.warn('Aviso: Campanhas indisponíveis', e));
+    carregarLeaderboard().catch(e => console.warn('Aviso: Leaderboard indisponível', e));
 }
 
 /**
  * Verifica as permissões de administrador
  */
 async function verificarPermissoesAdmin() {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     if (!token) return;
 
     try {
@@ -156,8 +188,13 @@ async function verificarPermissoesAdmin() {
         const searchBox = document.getElementById('adminSearchBox');
         if (searchBox) searchBox.style.display = 'block';
 
-        if (user.username === 'admin') {
+        if (user.username === 'admin' || user.email === 'admin@ludarium.com') {
             console.log('Sessão de Administrador autenticada.');
+            const elementosAdminExclusivos = document.querySelectorAll('.admin-only');
+            elementosAdminExclusivos.forEach(el => {
+                el.classList.remove('admin-only');
+                el.style.display = 'block';
+            });
         } else {
             const elementosAdminExclusivos = document.querySelectorAll('.admin-only');
             elementosAdminExclusivos.forEach(el => el.style.display = 'none');
@@ -172,6 +209,7 @@ async function verificarPermissoesAdmin() {
  */
 function fazerLogout() {
     localStorage.removeItem('ludarium_token');
+    localStorage.removeItem('access_token');
     localStorage.removeItem('ludarium_user');
     window.location.href = 'login.html';
 }
@@ -194,7 +232,7 @@ function fecharModalNovoProjeto() {
 }
 
 /**
- * Carrega as campanhas / Game Jams disponíveis para seleção no formulário de projetos
+ * Carrega as campanhas / Game Jams disponíveis
  */
 async function carregarCampanhasNoSelect() {
     const select = document.getElementById('projCampaignSelect');
@@ -219,13 +257,10 @@ async function carregarCampanhasNoSelect() {
     }
 }
 
-/**
- * Pesquisa um utilizador para adicionar à equipe do projeto
- */
 async function pesquisarMembroEquipe() {
     const termo = document.getElementById('memberSearchInput').value.trim();
     const resultDiv = document.getElementById('memberSearchResult');
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
 
     if (!termo) {
         resultDiv.innerHTML = '<span style="color: #fca5a5;">Digite um username para pesquisar.</span>';
@@ -303,7 +338,7 @@ function atualizarListaEquipeUI() {
  */
 async function enviarNovoProjeto(event) {
     event.preventDefault();
-    const token = localStorage.getItem('ludarium_token') || '';
+    const token = obterToken();
 
     const form = event.target;
     const formData = new FormData();
@@ -346,6 +381,7 @@ async function enviarNovoProjeto(event) {
 
         fecharModalProjeto();
         carregarProjetosHome();
+        carregarProjetosSobInspecaoUsuario();
         form.reset();
         mostrarToast('Projeto publicado com sucesso e equipa vinculada!', 'sucesso');
     } catch (error) {
@@ -355,9 +391,14 @@ async function enviarNovoProjeto(event) {
 }
 
 /**
- * Carrega a lista de projetos na Home com suporte a tags, curtidas e favoritos
+ * Carrega a lista de projetos na Home validando estritamente a autoria e permissões pelo token.
  */
 async function carregarProjetosHome(tagFiltro = '') {
+    const grid = document.getElementById('projectsGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<p style="color: #9ca3af; padding: 10px;">A carregar projetos...</p>';
+
     try {
         let url = `${PROJECT_SERVICE_URL}/projects`;
         if (tagFiltro && tagFiltro.trim() !== '') {
@@ -365,20 +406,21 @@ async function carregarProjetosHome(tagFiltro = '') {
         }
 
         const response = await fetch(url);
-        if (!response.ok) return;
+        if (!response.ok) {
+            throw new Error(`Erro ao buscar projetos (Status: ${response.status})`);
+        }
+        
         const projetos = await response.json();
-
-        const usuarioLogado = (localStorage.getItem('ludarium_user') || '').trim().toLowerCase();
-        const éAdmin = (usuarioLogado === 'admin');
-
-        const grid = document.getElementById('projectsGrid');
-        if (!grid) return;
         grid.innerHTML = '';
 
         if (!Array.isArray(projetos) || projetos.length === 0) {
-            grid.innerHTML = '<p style="color: var(--text-muted);">Nenhum projeto encontrado.</p>';
+            grid.innerHTML = '<p style="color: #9ca3af; padding: 10px;">Nenhum projeto encontrado.</p>';
             return;
         }
+
+        // Identificação segura, síncrona e imediata através do Token JWT (evita race conditions)
+        const usuarioLogado = obterUtilizadorAtualDoToken();
+        const éAdmin = (usuarioLogado === 'admin' || usuarioLogado === 'admin@ludarium.com');
 
         projetos.forEach(p => {
             const card = document.createElement('div');
@@ -393,6 +435,15 @@ async function carregarProjetosHome(tagFiltro = '') {
             const éDono = (usuarioLogado !== '' && donoProjeto !== '' && donoProjeto === usuarioLogado);
             const podeGerir = éAdmin || éDono;
 
+            const statusProj = (p.status || '').toLowerCase();
+            const estaInspecionado = statusProj.includes('inspeção') || statusProj.includes('aguardando') || statusProj.includes('suspenso');
+
+            if (estaInspecionado) {
+                card.style.cssText = 'border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.03); position: relative;';
+            }
+
+            const badgeInspecao = estaInspecionado ? `<div style="background: #f59e0b; color: #000; font-size: 0.65rem; font-weight: bold; padding: 3px 6px; text-align: center; border-radius: 4px 4px 0 0; margin-bottom: 5px;">⏳ SOB INSPEÇÃO - AÇÃO NECESSÁRIA</div>` : '';
+
             let rawBuildPath = p.build_path;
             if (!rawBuildPath && p.executavel_navegador === 1) {
                 rawBuildPath = `sandbox_builds/${p.title.toLowerCase().replace(/[\s]+/g, '_')}`;
@@ -404,6 +455,8 @@ async function carregarProjetosHome(tagFiltro = '') {
             const safeTags = encodeURIComponent(p.tags ? (Array.isArray(p.tags) ? p.tags.join(', ') : p.tags) : '');
             const safeMembers = encodeURIComponent(p.members || '');
             const safeCampaign = p.campaign_id || '';
+            const safeStatus = encodeURIComponent(p.status || '');
+            const safeReply = encodeURIComponent(p.inspection_reply || '');
 
             let membrosHTML = '';
             if (p.members) {
@@ -427,6 +480,7 @@ async function carregarProjetosHome(tagFiltro = '') {
             const corFavorito = p.favorito === 1 ? '#f59e0b' : '#9ca3af';
 
             card.innerHTML = `
+                ${badgeInspecao}
                 <div class="project-img-container" onclick="testarJogoSePossivel('${p.id}', '${safeBuildPath}')">
                     <img src="${imagemUrl}" alt="${p.title}">
                 </div>
@@ -453,7 +507,7 @@ async function carregarProjetosHome(tagFiltro = '') {
                 </div>
                 ${podeGerir ? `
                     <div class="project-author-actions">
-                        <button class="btn-action-edit" onclick="abrirModalEditar(event, '${p.id}', '${safeTitle}', '${safeDesc}', '${p.progress || 100}', '${safeTags}', '${safeMembers}', '${safeCampaign}')">✏️ Editar</button>
+                        <button class="btn-action-edit" onclick="abrirModalEditar(event, '${p.id}', '${safeTitle}', '${safeDesc}', '${p.progress || 100}', '${safeTags}', '${safeMembers}', '${safeCampaign}', '${safeStatus}', '${safeReply}')">✏️ Editar</button>
                         <button class="btn-action-delete" onclick="excluirProjeto(event, '${p.id}')">🗑️ Excluir</button>
                     </div>
                 ` : ''}
@@ -462,12 +516,10 @@ async function carregarProjetosHome(tagFiltro = '') {
         });
     } catch (e) {
         console.error('Erro ao buscar projetos:', e);
+        grid.innerHTML = `<p style="color: #ef4444; padding: 10px;">Erro ao carregar projetos (Servidor de projetos na porta 8081 indisponível ou offline).</p>`;
     }
 }
 
-/**
- * Filtra os projetos exibidos com base no texto digitado na barra de pesquisa unificada
- */
 function filtrarProjetosTexto() {
     const input = document.getElementById('adminSearchInput');
     if (!input) return;
@@ -486,16 +538,10 @@ function filtrarProjetosTexto() {
     });
 }
 
-/**
- * Dispara o carregamento filtrado por tag específica
- */
 function filtrarPorTag(tag) {
     carregarProjetosHome(tag);
 }
 
-/**
- * Carrega e exibe a tabela de líderes (Leaderboard) com base no XP dos utilizadores
- */
 async function carregarLeaderboard() {
     const container = document.getElementById('leaderboardList');
     if (!container) return;
@@ -515,9 +561,9 @@ async function carregarLeaderboard() {
         utilizadores.forEach((user, index) => {
             const posicao = index + 1;
             let corBadge = '#4b5563';
-            if (posicao === 1) corBadge = '#f59e0b'; // Ouro
-            else if (posicao === 2) corBadge = '#94a3b8'; // Prata
-            else if (posicao === 3) corBadge = '#b45309'; // Bronze
+            if (posicao === 1) corBadge = '#f59e0b';
+            else if (posicao === 2) corBadge = '#94a3b8';
+            else if (posicao === 3) corBadge = '#b45309';
 
             const item = document.createElement('div');
             item.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: rgba(124, 58, 237, 0.1); padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(124, 58, 237, 0.3);";
@@ -537,12 +583,9 @@ async function carregarLeaderboard() {
     }
 }
 
-/**
- * Incrementa as curtidas (likes) de um projeto
- */
 async function curtirProjeto(event, id) {
     event.stopPropagation();
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     try {
         const response = await fetch(`${PROJECT_SERVICE_URL}/projects/${id}/avaliar`, {
             method: 'PATCH',
@@ -558,12 +601,9 @@ async function curtirProjeto(event, id) {
     }
 }
 
-/**
- * Alterna o estado de favorito de um projeto
- */
 async function favoritarProjeto(event, id) {
     event.stopPropagation();
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     try {
         const response = await fetch(`${PROJECT_SERVICE_URL}/projects/${id}/favorito`, {
             method: 'PATCH',
@@ -590,10 +630,7 @@ function testarJogoSePossivel(projectId, buildPath) {
     }
 }
 
-/**
- * Abre o modal de edição preenchendo dados, campanhas e equipe atual
- */
-async function abrirModalEditar(event, id, titleEncoded, descEncoded, progress, tagsEncoded, membersEncoded, campaignId) {
+async function abrirModalEditar(event, id, titleEncoded, descEncoded, progress, tagsEncoded, membersEncoded, campaignId, statusEncoded = '', replyEncoded = '') {
     event.stopPropagation();
     
     document.getElementById('editProjId').value = id;
@@ -601,6 +638,19 @@ async function abrirModalEditar(event, id, titleEncoded, descEncoded, progress, 
     document.getElementById('editProjDesc').value = decodeURIComponent(descEncoded);
     document.getElementById('editProjProgress').value = progress;
     document.getElementById('editProjTags').value = decodeURIComponent(tagsEncoded);
+
+    const status = decodeURIComponent(statusEncoded).toLowerCase();
+    const replyContainer = document.getElementById('editInspectionReplyContainer');
+    const replyField = document.getElementById('editInspectionReply');
+    const estaInspecionado = status.includes('inspeção') || status.includes('aguardando') || status.includes('suspenso');
+
+    if (estaInspecionado && replyContainer && replyField) {
+        replyContainer.style.display = 'block';
+        replyField.value = decodeURIComponent(replyEncoded);
+    } else if (replyContainer) {
+        replyContainer.style.display = 'none';
+        if (replyField) replyField.value = '';
+    }
 
     await carregarCampanhasNoSelectEdicao(campaignId);
 
@@ -650,7 +700,7 @@ async function carregarCampanhasNoSelectEdicao(selectedCampaignId) {
 async function pesquisarMembroEquipeEdicao() {
     const termo = document.getElementById('editMemberSearchInput').value.trim();
     const resultDiv = document.getElementById('editMemberSearchResult');
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
 
     if (!termo) {
         resultDiv.innerHTML = '<span style="color: #fca5a5;">Digite um username para pesquisar.</span>';
@@ -725,11 +775,12 @@ function atualizarListaEquipeEdicaoUI() {
 
 async function salvarEdicaoProjeto(event) {
     event.preventDefault();
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     const id = document.getElementById('editProjId').value;
     const btnSubmit = event.target.querySelector('button[type="submit"]');
 
     const campaignIdVal = document.getElementById('editProjCampaignSelect').value;
+    const replyField = document.getElementById('editInspectionReply');
 
     const dadosAtualizados = {
         title: document.getElementById('editProjTitle').value,
@@ -739,6 +790,10 @@ async function salvarEdicaoProjeto(event) {
         campaign_id: campaignIdVal ? parseInt(campaignIdVal) : null,
         members: document.getElementById('editProjMembersField').value
     };
+
+    if (replyField && replyField.offsetParent !== null) {
+        dadosAtualizados.inspection_reply = replyField.value.trim();
+    }
 
     definirBotaoCarregamento(btnSubmit, true, "Guardar Alterações");
 
@@ -757,9 +812,10 @@ async function salvarEdicaoProjeto(event) {
             throw new Error(errData.detail || 'Falha ao atualizar o projeto.');
         }
 
-        mostrarToast('Projeto e equipa atualizados com sucesso!', 'sucesso');
+        mostrarToast('Projeto e resposta de inspeção guardados com sucesso!', 'sucesso');
         fecharModalEditar();
         carregarProjetosHome();
+        carregarProjetosSobInspecaoUsuario();
     } catch (error) {
         mostrarToast('Erro ao editar: ' + error.message, 'erro');
     } finally {
@@ -771,7 +827,7 @@ async function excluirProjeto(event, id) {
     event.stopPropagation();
     if (!confirm('Tem certeza de que deseja excluir este projeto permanentemente?')) return;
 
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
 
     try {
         const response = await fetch(`${PROJECT_SERVICE_URL}/projects/${id}`, {
@@ -786,14 +842,12 @@ async function excluirProjeto(event, id) {
 
         mostrarToast('Projeto excluído com sucesso!', 'sucesso');
         carregarProjetosHome();
+        carregarProjetosSobInspecaoUsuario();
     } catch (error) {
         mostrarToast('Erro ao excluir: ' + error.message, 'erro');
     }
 }
 
-/**
- * Executa o jogo no Sandbox e guarda o ID atual para posterior avaliação
- */
 function executarJogo(projectId, buildPath) {
     projetoAtualId = projectId;
 
@@ -808,9 +862,6 @@ function executarJogo(projectId, buildPath) {
     container.scrollIntoView({ behavior: 'smooth' });
 }
 
-/**
- * Fecha o sandbox e abre automaticamente o modal de feedback pós-jogo
- */
 function fecharSandbox() {
     const container = document.getElementById('sandboxContainer');
     if (container) container.style.display = 'none';
@@ -825,9 +876,6 @@ function fecharSandbox() {
     }
 }
 
-/**
- * Submete o feedback do jogo testado e credita +75 XP ao utilizador
- */
 async function submeterFeedbackJogo(projectId, nota, comentario) {
     const token = obterToken();
 
@@ -902,11 +950,8 @@ function mutarAudio() {
     }
 }
 
-/**
- * MENSAGENS E ADMIN
- */
 async function carregarMensagensPrivadas() {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     const container = document.getElementById('myMessagesList');
     if (!container) return;
 
@@ -915,13 +960,13 @@ async function carregarMensagensPrivadas() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) return;
+        if (!response.ok) throw new Error('Falha ao carregar mensagens');
 
         const messages = await response.json();
         container.innerHTML = '';
 
         if (!Array.isArray(messages) || messages.length === 0) {
-            container.innerHTML = '<span style="color: var(--text-muted);">Não tem nenhuma mensagem nova da administração.</span>';
+            container.innerHTML = '<span style="color: #9ca3af;">Não tem nenhuma mensagem nova da administração.</span>';
             return;
         }
 
@@ -948,11 +993,12 @@ async function carregarMensagensPrivadas() {
         });
     } catch (error) {
         console.error('Erro ao buscar mensagens privadas:', error);
+        container.innerHTML = '<span style="color: #ef4444; font-size: 0.9rem;">Erro ao carregar mensagens (Gateway indisponível).</span>';
     }
 }
 
 async function apagarMensagem(msgId) {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     try {
         const response = await fetch(`${GATEWAY_URL}/messages/${msgId}`, {
             method: 'DELETE',
@@ -968,7 +1014,7 @@ async function apagarMensagem(msgId) {
 async function pesquisarUtilizadorAdmin() {
     const termo = document.getElementById('adminSearchInput').value.trim();
     const resultDiv = document.getElementById('adminSearchResult');
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
 
     if (!termo) {
         mostrarToast('Por favor, digite um username ou email para pesquisar.', 'erro');
@@ -1015,7 +1061,7 @@ function closeAdminMessageModal() {
 }
 
 async function submitAdminMessage() {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     const content = document.getElementById('adminMessageText').value.trim();
     const recipient = currentAdminRecipient;
 
@@ -1066,12 +1112,11 @@ async function atualizarPerfilMenu(token) {
     }
 }
 
-/**
- * SISTEMA DE NOTIFICAÇÕES (FRONTEND)
- */
 async function carregarNotificacoes() {
-    const token = localStorage.getItem('ludarium_token');
-    if (!token) return;
+    const token = obterToken();
+    const list = document.getElementById('notificationsList');
+    if (!token || !list) return;
+
     try {
         const response = await fetch(`${GATEWAY_URL}/notifications`, {
             headers: { 'Authorization': 'Bearer ' + token }
@@ -1080,8 +1125,6 @@ async function carregarNotificacoes() {
         const notificacoes = await response.json();
         
         const badge = document.getElementById('notificationBadge');
-        const list = document.getElementById('notificationsList');
-        
         const naoLidas = notificacoes.filter(n => n.is_read === 0).length;
         if (naoLidas > 0) {
             badge.textContent = naoLidas;
@@ -1129,7 +1172,7 @@ function toggleNotificationsMenu() {
 }
 
 async function marcarNotificacaoLida(id) {
-    const token = localStorage.getItem('ludarium_token');
+    const token = obterToken();
     try {
         await fetch(`${GATEWAY_URL}/notifications/${id}/read`, {
             method: 'PATCH',
@@ -1138,5 +1181,114 @@ async function marcarNotificacaoLida(id) {
         carregarNotificacoes();
     } catch (e) {
         console.error('Erro ao marcar notificação como lida:', e);
+    }
+}
+
+async function carregarProjetosSobInspecaoUsuario() {
+    const box = document.getElementById('userInspectionAlertBox');
+    const list = document.getElementById('userInspectionProjectsList');
+    if (!box || !list) return;
+
+    const token = obterToken();
+    const usuarioLogado = obterUtilizadorAtualDoToken();
+    if (!token || !usuarioLogado) return;
+
+    try {
+        const response = await fetch(`${PROJECT_SERVICE_URL}/projects`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+
+        const projetos = await response.json();
+        if (!Array.isArray(projetos)) return;
+
+        const meusProjetosSobInspecao = projetos.filter(p => {
+            const dono = (p.owner || p.user_id || '').trim().toLowerCase();
+            const statusProj = (p.status || '').toLowerCase();
+            const éMeu = (dono === usuarioLogado);
+            const estaInspecionado = statusProj.includes('inspeção') || statusProj.includes('aguardando') || statusProj.includes('suspenso');
+            return éMeu && estaInspecionado;
+        });
+
+        if (meusProjetosSobInspecao.length > 0) {
+            let html = '';
+            meusProjetosSobInspecao.forEach(p => {
+                const safeTitle = encodeURIComponent(p.title || '');
+                const safeDesc = encodeURIComponent(p.description || '');
+                const safeTags = encodeURIComponent(p.tags ? (Array.isArray(p.tags) ? p.tags.join(', ') : p.tags) : '');
+                const safeMembers = encodeURIComponent(p.members || '');
+                const safeCampaign = p.campaign_id || '';
+                const safeStatus = encodeURIComponent(p.status || '');
+                const safeReply = encodeURIComponent(p.inspection_reply || '');
+
+                html += `
+                    <div style="background: #1e1b2e; border: 1px solid #f59e0b; padding: 20px; border-radius: 10px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                            <div>
+                                <h4 style="color: #fff; margin: 0 0 5px 0; font-size: 1.05rem;">🎮 ${p.title}</h4>
+                                <p style="color: #f59e0b; font-size: 0.85rem; margin: 0 0 5px 0;"><strong>Estado:</strong> ${p.status || 'Sob Inspeção'}</p>
+                                ${p.inspection_reason ? `<p style="color: #d8b4fe; font-size: 0.85rem; margin: 4px 0;"><strong>Motivo do Inspetor:</strong> ${p.inspection_reason}</p>` : ''}
+                                ${p.inspection_message ? `<p style="color: #d8b4fe; font-size: 0.85rem; margin: 4px 0;"><strong>Instruções:</strong> ${p.inspection_message}</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                            <label style="display: block; color: #f59e0b; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px;">✍️ Escrever Resposta / Comentário de Correção para o Inspetor:</label>
+                            <textarea id="reply_input_${p.id}" rows="3" placeholder="Descreva as alterações e correções efetuadas neste projeto..." style="width: 100%; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; resize: none; font-size: 0.85rem; margin-bottom: 10px;">${p.inspection_reply || ''}</textarea>
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                                <button onclick="abrirModalEditar(event, '${p.id}', '${safeTitle}', '${safeDesc}', '${p.progress || 100}', '${safeTags}', '${safeMembers}', '${safeCampaign}', '${safeStatus}', '${safeReply}')" style="background: transparent; border: 1px solid #7c3aed; color: #d8b4fe; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">
+                                    ✏️ Editar Detalhes do Projeto
+                                </button>
+                                <button onclick="enviarRespostaInspecaoDireta('${p.id}')" style="background: #f59e0b; color: #000; border: none; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
+                                    🚀 Enviar Resposta ao Inspetor
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+            box.style.display = 'block';
+        } else {
+            box.style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Erro ao verificar projetos sob inspeção:", e);
+    }
+}
+
+async function enviarRespostaInspecaoDireta(projectId) {
+    const token = obterToken();
+    const replyField = document.getElementById(`reply_input_${projectId}`);
+    if (!replyField) return;
+
+    const replyText = replyField.value.trim();
+    if (!replyText) {
+        mostrarToast('Por favor, escreva a sua resposta de correção antes de enviar.', 'erro');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${PROJECT_SERVICE_URL}/projects/${projectId}/reply-inspection`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                reply_message: replyText
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Falha ao enviar resposta de inspeção.');
+        }
+
+        mostrarToast('Resposta de correção enviada ao inspetor com sucesso! 👍', 'sucesso');
+        carregarProjetosSobInspecaoUsuario();
+        carregarProjetosHome();
+    } catch (error) {
+        mostrarToast('Erro ao enviar resposta: ' + error.message, 'erro');
     }
 }

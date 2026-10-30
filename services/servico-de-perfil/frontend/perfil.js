@@ -1,10 +1,36 @@
 const AUTH_SERVICE_URL = "http://localhost:8001";
 const PROJECT_SERVICE_URL = "http://localhost:8081";
 const SERVICO_DE_COMUNIDADE_URL = "http://localhost:8002";
-const SERVICO_DE_CAMPANHAS_URL = 'http://localhost:8003';
-const SERVICO_DE_CAMPANHAS = SERVICO_DE_CAMPANHAS_URL;
+const SERVICO_DE_CAMPANHAS_URL = "http://localhost:8003";
 const SERVICO_DE_PERFIL_URL = "http://localhost:8004";
 const GATEWAY_URL = "http://localhost:8005";
+
+/**
+ * Exibe uma notificação Toast flutuante elegante no canto inferior direito
+ */
+function mostrarToast(mensagem, tipo = 'sucesso') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.style.cssText = "position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;";
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const corFundo = tipo === 'sucesso' ? '#7c3aed' : '#ef4444';
+    
+    toast.style.cssText = `background: ${corFundo}; color: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-size: 0.9rem; font-weight: 500; opacity: 0; transition: opacity 0.3s ease; border: 1px solid rgba(255,255,255,0.2);`;
+    toast.textContent = mensagem;
+    
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '1'; }, 50);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -52,68 +78,88 @@ function obterToken() {
 
 function toggleEditForm() {
     const container = document.getElementById('edit-form-container');
-    if (container.style.display === 'none') {
+    if (!container) return;
+
+    if (container.style.display === 'none' || container.style.display === '') {
         container.style.display = 'block';
 
-        document.getElementById('input-nome').value = document.getElementById('profile-name').textContent;
-        document.getElementById('input-arroba').value = document.getElementById('profile-arroba').textContent;
-        document.getElementById('input-localizacao').value = document.getElementById('profile-location').textContent.replace('📍 ', '');
-        document.getElementById('input-biografia').value = document.getElementById('profile-bio').textContent;
+        const nomeEl = document.getElementById('profile-name');
+        const arrobaEl = document.getElementById('profile-arroba');
+        const locEl = document.getElementById('profile-location');
+        const bioEl = document.getElementById('profile-bio');
+
+        if (nomeEl) document.getElementById('input-nome').value = nomeEl.textContent;
+        if (arrobaEl) document.getElementById('input-arroba').value = arrobaEl.textContent;
+        if (locEl) document.getElementById('input-localizacao').value = locEl.textContent.replace('📍 ', '');
+        if (bioEl) document.getElementById('input-biografia').value = bioEl.textContent;
 
         const linksNaTela = document.querySelectorAll('#profile-links a');
-        if (linksNaTela[0]) document.getElementById('input-link1-url').value = linksNaTela[0].href;
-        if (linksNaTela[1]) document.getElementById('input-link2-url').value = linksNaTela[1].href;
-        if (linksNaTela[2]) document.getElementById('input-link3-url').value = linksNaTela[2].href;
+        if (linksNaTela[0] && document.getElementById('input-link1-url')) document.getElementById('input-link1-url').value = linksNaTela[0].href;
+        if (linksNaTela[1] && document.getElementById('input-link2-url')) document.getElementById('input-link2-url').value = linksNaTela[1].href;
+        if (linksNaTela[2] && document.getElementById('input-link3-url')) document.getElementById('input-link3-url').value = linksNaTela[2].href;
 
     } else {
         container.style.display = 'none';
     }
 }
 
-document.getElementById('update-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('ludarium_token') || '';
+const updateForm = document.getElementById('update-form');
+if (updateForm) {
+    updateForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('ludarium_token') || '';
+        const submitBtn = updateForm.querySelector('button[type="submit"]');
 
-    const payload = {
-        nome: document.getElementById('input-nome').value,
-        arroba: document.getElementById('input-arroba').value,
-        localizacao: document.getElementById('input-localizacao').value,
-        biografia: document.getElementById('input-biografia').value,
-        links: [
-            { rotulo: "GitHub", url: document.getElementById('input-link1-url').value },
-            { rotulo: "LinkedIn", url: document.getElementById('input-link2-url').value },
-            { rotulo: "Website", url: document.getElementById('input-link3-url').value }
-        ]
-    };
+        const payload = {
+            nome: document.getElementById('input-nome').value.trim(),
+            arroba: document.getElementById('input-arroba').value.trim(),
+            localizacao: document.getElementById('input-localizacao').value.trim(),
+            biografia: document.getElementById('input-biografia').value.trim(),
+            links: [
+                { rotulo: "GitHub", url: document.getElementById('input-link1-url').value.trim() },
+                { rotulo: "LinkedIn", url: document.getElementById('input-link2-url').value.trim() },
+                { rotulo: "Website", url: document.getElementById('input-link3-url').value.trim() }
+            ].filter(l => l.url !== '')
+        };
 
-    try {
-        const response = await fetch(`${SERVICO_DE_PERFIL_URL}/perfil/eu`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
-        });
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'A guardar...';
+        }
 
-        if (!response.ok) throw new Error('Erro ao atualizar perfil');
+        try {
+            const response = await fetch(`${SERVICO_DE_PERFIL_URL}/perfil/eu`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
 
-        alert('Perfil atualizado com sucesso!');
-        toggleEditForm();
-        fetchUserProfile(); 
-        carregarLeaderboard(); 
-    } catch (error) {
-        console.error(error);
-        alert('Erro ao guardar alterações.');
-    }
-});
+            if (!response.ok) throw new Error('Erro ao atualizar perfil');
+
+            mostrarToast('Perfil atualizado com sucesso!');
+            toggleEditForm();
+            fetchUserProfile(); 
+            carregarLeaderboard(); 
+        } catch (error) {
+            console.error(error);
+            mostrarToast('Erro ao guardar alterações.', 'erro');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Guardar Alterações';
+            }
+        }
+    });
+}
 
 async function deletarPerfil() {
     if (!confirm('Tem certeza de que deseja eliminar a sua conta e todos os dados associados permanentemente? Esta ação não pode ser desfeita.')) {
         return;
     }
 
-    // Feedback visual imediato na interface (desativa o botão e muda o texto)
     const btnEliminar = document.querySelector('button[onclick="deletarPerfil()"]');
     if (btnEliminar) {
         btnEliminar.disabled = true;
@@ -132,21 +178,18 @@ async function deletarPerfil() {
             throw new Error('Erro ao eliminar a conta no servidor.');
         }
 
-        // Limpa totalmente a sessão e o armazenamento local do navegador
         localStorage.clear();
         sessionStorage.clear();
 
-        // Alerta visual de sucesso antes de redirecionar
-        alert('Conta e dados eliminados com sucesso!');
-
-        // Encaminha visualmente para a página de login correta
-        window.location.href = `${AUTH_SERVICE_URL}/frontend/login.html`;
+        mostrarToast('Conta e dados eliminados com sucesso!');
+        setTimeout(() => {
+            window.location.href = `${AUTH_SERVICE_URL}/frontend/login.html`;
+        }, 1500);
 
     } catch (error) {
         console.error('Erro ao eliminar o perfil:', error);
-        alert('Ocorreu um erro ao tentar apagar a conta. Tente novamente.');
+        mostrarToast('Ocorreu um erro ao tentar apagar a conta.', 'erro');
         
-        // Restaura o botão caso ocorra algum erro de rede
         if (btnEliminar) {
             btnEliminar.disabled = false;
             btnEliminar.textContent = '🗑️ Eliminar Perfil';
@@ -167,10 +210,10 @@ async function fetchUserProfile() {
         
         const data = await response.json();
         
-        document.getElementById('profile-name').textContent = data.nome || '';
-        document.getElementById('profile-arroba').textContent = data.arroba || '';
+        document.getElementById('profile-name').textContent = data.nome || 'Utilizador';
+        document.getElementById('profile-arroba').textContent = data.arroba || '@utilizador';
         document.getElementById('profile-location').textContent = data.localizacao ? `📍 ${data.localizacao}` : '📍 Não definida';
-        document.getElementById('profile-bio').textContent = data.biografia || '';
+        document.getElementById('profile-bio').textContent = data.biografia || 'Sem biografia.';
         document.getElementById('badge-funcao').textContent = data.badge_funcao || 'NOVO MEMBRO';
         document.getElementById('profile-level').textContent = data.nivel || 1;
         document.getElementById('profile-xp').textContent = data.xp_atual || 0;
@@ -182,53 +225,63 @@ async function fetchUserProfile() {
         document.getElementById('stat-contribuicoes').textContent = data.contribuicoes_anuais || 0;
 
         const linksContainer = document.getElementById('profile-links');
-        linksContainer.innerHTML = (data.links || []).map(l => `<a href="${l.url}" target="_blank">🔗 ${l.rotulo}</a>`).join('');
+        if (linksContainer) {
+            linksContainer.innerHTML = (data.links || []).map(l => `<a href="${l.url}" target="_blank" style="color: #38bdf8; text-decoration: none; margin-right: 15px;">🔗 ${l.rotulo}</a>`).join('');
+        }
 
         const comContainer = document.getElementById('comunidades-list');
-        comContainer.innerHTML = (data.comunidades || []).length > 0 
-            ? (data.comunidades || []).map(c => `<li style="margin-bottom: 0.5rem; color:#94a3b8;"><strong>${c.nome}</strong> - <span style="font-size:0.8rem">${c.membros}</span></li>`).join('')
-            : '<li style="color: #64748b; font-size: 0.85rem;">Nenhuma comunidade associada.</li>';
+        if (comContainer) {
+            comContainer.innerHTML = (data.comunidades || []).length > 0 
+                ? (data.comunidades || []).map(c => `<li style="margin-bottom: 0.5rem; color:#94a3b8;"><strong>${c.nome}</strong> - <span style="font-size:0.8rem">${c.membros}</span></li>`).join('')
+                : '<li style="color: #64748b; font-size: 0.85rem;">Nenhuma comunidade associada.</li>';
+        }
 
         const trofeusContainer = document.getElementById('trofeus-list');
-        trofeusContainer.innerHTML = (data.trofeus || []).length > 0 
-            ? (data.trofeus || []).map(t => `
-                <div style="margin-bottom: 0.8rem; padding: 0.5rem; background: #0f172a; border-radius: 6px; border: 1px solid ${t.concluido ? '#38bdf8' : '#334155'}">
-                    <strong>${t.concluido ? '🏆' : '🔒'} ${t.titulo}</strong>
-                    <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">${t.descricao}</p>
-                </div>
-            `).join('')
-            : '<p style="color: #64748b; font-size: 0.85rem;">Nenhum troféu registado.</p>';
+        if (trofeusContainer) {
+            trofeusContainer.innerHTML = (data.trofeus || []).length > 0 
+                ? (data.trofeus || []).map(t => `
+                    <div style="margin-bottom: 0.8rem; padding: 0.5rem; background: #0f172a; border-radius: 6px; border: 1px solid ${t.concluido ? '#38bdf8' : '#334155'}">
+                        <strong>${t.concluido ? '🏆' : '🔒'} ${t.titulo}</strong>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #94a3b8;">${t.descricao}</p>
+                    </div>
+                `).join('')
+                : '<p style="color: #64748b; font-size: 0.85rem;">Nenhum troféu registado.</p>';
+        }
 
         const projContainer = document.getElementById('projetos-destaque-list');
-        projContainer.innerHTML = (data.projetos_destaque || []).length > 0
-            ? (data.projetos_destaque || []).map(p => `
-                <div style="margin-bottom: 1rem; padding: 0.8rem; background: #0f172a; border-radius: 6px; border: 1px solid #334155;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>${p.titulo}</strong>
-                        <span style="font-size: 0.75rem; background: #1e293b; padding: 0.2rem 0.5rem; border-radius: 4px; color: #38bdf8;">${p.status_badge}</span>
+        if (projContainer) {
+            projContainer.innerHTML = (data.projetos_destaque || []).length > 0
+                ? (data.projetos_destaque || []).map(p => `
+                    <div style="margin-bottom: 1rem; padding: 0.8rem; background: #0f172a; border-radius: 6px; border: 1px solid #334155;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${p.titulo}</strong>
+                            <span style="font-size: 0.75rem; background: #1e293b; padding: 0.2rem 0.5rem; border-radius: 4px; color: #38bdf8;">${p.status_badge}</span>
+                        </div>
+                        <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #94a3b8;">${p.papel}</p>
+                        <div style="background: #334155; border-radius: 4px; height: 6px; width: 100%; margin-top: 0.5rem;">
+                            <div style="background: #38bdf8; height: 100%; width: ${p.progresso}%; border-radius: 4px;"></div>
+                        </div>
                     </div>
-                    <p style="margin: 0.3rem 0; font-size: 0.85rem; color: #94a3b8;">${p.papel}</p>
-                    <div style="background: #334155; border-radius: 4px; height: 6px; width: 100%; margin-top: 0.5rem;">
-                        <div style="background: #38bdf8; height: 100%; width: ${p.progresso}%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-            `).join('')
-            : '<p style="color: #64748b; font-size: 0.85rem;">Nenhum projeto registado.</p>';
+                `).join('')
+                : '<p style="color: #64748b; font-size: 0.85rem;">Nenhum projeto registado.</p>';
+        }
 
         const ativContainer = document.getElementById('atividades-list');
-        ativContainer.innerHTML = (data.atividades || []).length > 0
-            ? (data.atividades || []).map(a => `
-                <div style="background: #0f172a; padding: 1rem; border-radius: 6px; border: 1px solid #334155;">
-                    <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem;">${a.descricao}</p>
-                    <span style="font-size: 0.75rem; color: #64748b;">${a.tempo_atras}</span>
-                    ${a.comentario_destaque ? `<div style="margin-top: 0.5rem; padding: 0.5rem; background: #1e293b; border-left: 3px solid #38bdf8; font-size: 0.85rem; color: #cbd5e1;">"${a.comentario_destaque}"</div>` : ''}
-                </div>
-            `).join('')
-            : '<p style="color: #64748b; font-size: 0.85rem;">Nenhuma atividade recente.</p>';
+        if (ativContainer) {
+            ativContainer.innerHTML = (data.atividades || []).length > 0
+                ? (data.atividades || []).map(a => `
+                    <div style="background: #0f172a; padding: 1rem; border-radius: 6px; border: 1px solid #334155; margin-bottom: 0.75rem;">
+                        <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem;">${a.descricao}</p>
+                        <span style="font-size: 0.75rem; color: #64748b;">${a.tempo_atras}</span>
+                        ${a.comentario_destaque ? `<div style="margin-top: 0.5rem; padding: 0.5rem; background: #1e293b; border-left: 3px solid #38bdf8; font-size: 0.85rem; color: #cbd5e1;">"${a.comentario_destaque}"</div>` : ''}
+                    </div>
+                `).join('')
+                : '<p style="color: #64748b; font-size: 0.85rem;">Nenhuma atividade recente.</p>';
+        }
 
     } catch (error) {
         console.error(error);
-        alert('Erro ao carregar os dados do perfil.');
+        mostrarToast('Erro ao carregar os dados do perfil.', 'erro');
     }
 }
 
@@ -253,7 +306,7 @@ async function carregarLeaderboard() {
         container.innerHTML = '';
 
         if (!Array.isArray(ranking) || ranking.length === 0) {
-            container.innerHTML = '<p style="color: #9ca3af; font-size: 0.9rem;">Ainda não há utilizadores no ranking.</p>';
+            container.innerHTML = '<p style="color: #9ca3af; font-size: 0.9rem; padding: 10px;">Ainda não há utilizadores no ranking.</p>';
             return;
         }
 
@@ -281,6 +334,6 @@ async function carregarLeaderboard() {
 
     } catch (error) {
         console.error("Erro ao carregar leaderboard:", error);
-        container.innerHTML = '<p style="color: #fca5a5; font-size: 0.9rem;">Erro ao carregar o placar de líderes.</p>';
+        container.innerHTML = '<p style="color: #fca5a5; font-size: 0.9rem; padding: 10px;">Erro ao carregar o placar de líderes.</p>';
     }
 }

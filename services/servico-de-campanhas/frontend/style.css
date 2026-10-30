@@ -9,6 +9,7 @@ body {
     background-color: #f4f7f6;
     color: #333;
     padding: 20px;
+    line-height: 1.5;
 }
 
 /* Estilos da Navbar Unificada */
@@ -46,7 +47,7 @@ body {
     color: #ecf0f1;
     text-decoration: none;
     font-size: 0.95rem;
-    transition: color 0.2s;
+    transition: color 0.2s ease;
 }
 
 .nav-links a:hover,
@@ -68,6 +69,7 @@ header {
 header h1 {
     color: #2c3e50;
     margin-bottom: 5px;
+    font-size: 1.8rem;
 }
 
 header p {
@@ -78,8 +80,9 @@ header p {
     background: #ffffff;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     margin-bottom: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .card h2 {
@@ -99,15 +102,24 @@ header p {
     margin-bottom: 5px;
     font-weight: 600;
     font-size: 0.9rem;
+    color: #2c3e50;
 }
 
 .form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     border: 1px solid #bdc3c7;
     border-radius: 4px;
     font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
 }
 
 .form-group textarea {
@@ -119,28 +131,41 @@ header p {
     background-color: #3498db;
     color: white;
     border: none;
-    padding: 10px 15px;
+    padding: 10px 18px;
     font-size: 1rem;
+    font-weight: 600;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .btn:hover {
     background-color: #2980b9;
 }
 
+.btn:active {
+    transform: translateY(1px);
+}
+
 .grid-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .campaign-item {
-    background: #f9f9f9;
-    padding: 15px;
+    background: #fdfdfd;
+    padding: 16px;
     border-left: 4px solid #3498db;
     border-radius: 4px;
+    border: 1px solid #eee;
+    border-left-width: 4px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.campaign-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .campaign-item h3 {
@@ -162,4 +187,6 @@ header p {
 .loading {
     color: #7f8c8d;
     font-style: italic;
+    text-align: center;
+    padding: 20px;
 }

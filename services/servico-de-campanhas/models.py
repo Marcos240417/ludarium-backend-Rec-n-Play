@@ -8,8 +8,8 @@ class CampanhaModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     titulo = Column(String, nullable=False)
     descricao = Column(Text, nullable=False)
-    categoria = Column(String, nullable=False) # Ex: "GAME JAM", "TRILHAS DE ESTUDO"
-    nivel = Column(String, nullable=False) # Ex: "Intermediário"
+    categoria = Column(String, nullable=False)  # Ex: "GAME JAM", "TRILHAS DE ESTUDO"
+    nivel = Column(String, nullable=False)       # Ex: "Intermediário"
     participantes_qtd = Column(Integer, default=0)
     recompensa_xp = Column(Integer, default=2500)
     formato = Column(String, default="Equipe")
@@ -23,7 +23,7 @@ class ObjetivoCampanhaModel(Base):
     __tablename__ = "objetivos_campanha"
 
     id = Column(Integer, primary_key=True, index=True)
-    campanha_id = Column(Integer, ForeignKey("campanhas_desafios.id"), nullable=False)
+    campanha_id = Column(Integer, ForeignKey("campanhas_desafios.id", ondelete="CASCADE"), nullable=False)
     titulo = Column(String, nullable=False)
     prazo = Column(String, nullable=False)
     recompensa_xp = Column(String, nullable=False)

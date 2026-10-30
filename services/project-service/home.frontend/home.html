@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ludarium - Plataforma de Jogos Independentes</title>
     <link rel="stylesheet" href="home.css">
+    <style>
+        /* Estilo para ocultar elementos exclusivos de admin por padrão */
+        .admin-only {
+            display: none !important;
+        }
+    </style>
+    <link rel="icon" href="data:,">
 </head>
 <body onload="verificarSessaoDashboard()">
 
@@ -12,12 +19,16 @@
         <div class="nav-brand">
             <span>L</span> LUDARIUM
         </div>
-            <ul class="nav-links">
-                <li><a href="http://127.0.0.1:8081/frontend/home.html" class="active">Projetos</a></li>
-                <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
-                <li><a href="http://127.0.0.1:8003/frontend/campanhas.html" class="active">Campanhas</a></li>
-                <li><a href="http://127.0.0.1:8004/frontend/perfil.html" class="active">Perfil</a></li>
-            </ul>
+        <ul class="nav-links">
+            <li><a href="http://127.0.0.1:8081/frontend/home.html" class="active">Projetos</a></li>
+            <li><a href="http://127.0.0.1:8002/frontend/community.html">Comunidade</a></li>
+            <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
+            <li><a href="http://127.0.0.1:8004/frontend/perfil.html">Perfil</a></li>
+            <!-- O link deve apontar para /admin-dashboard/admin.html e não /frontend/ -->
+            <li id="admin-menu-item" class="admin-only">
+                <a href="http://127.0.0.1:8081/admin-dashboard/admin.html" style="color: #f59e0b; font-weight: bold;">⚙️ Painel Admin</a>
+            </li>
+        </ul>
         <div class="nav-actions">
             <!-- Ícone de Notificações com Dropdown -->
             <div class="nav-notifications" style="position: relative; margin-right: 15px; cursor: pointer; display: flex; align-items: center;" onclick="toggleNotificationsMenu()" title="Notificações">
@@ -61,7 +72,18 @@
             </div>
         </div>
 
-        <!-- Filtros Rápidos por Tags (Sem barra de pesquisa duplicada) -->
+        <!-- Secção Reativa: Projetos do Utilizador Sob Inspeção (Aguardando Correção) -->
+        <div id="userInspectionAlertBox" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px; display: none;">
+            <h3 style="color: #f59e0b; margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                ⏳ Os seus projetos sob inspeção (Aguardando Correção)
+            </h3>
+            <p style="font-size: 0.85rem; color: #d8b4fe; margin-bottom: 15px;">Estes projetos foram sinalizados pela administração. Corrija os pontos indicados para reativá-los:</p>
+            <div id="userInspectionProjectsList" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Injetado dinamicamente via JS -->
+            </div>
+        </div>
+
+        <!-- Filtros Rápidos por Tags -->
         <div class="filters-container" style="display: flex; gap: 15px; margin-bottom: 25px; align-items: center; flex-wrap: wrap; background: #1a1829; padding: 15px; border-radius: 12px; border: 1px solid #7c3aed;">
             <span style="color: #d8b4fe; font-size: 0.9rem; font-weight: bold;">Filtros por Tags:</span>
             <div id="tagsFilterList" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -216,6 +238,13 @@
                     </select>
                 </div>
 
+                <!-- CAIXA DE RESPOSTA DA INSPEÇÃO (Visível apenas se o projeto estiver sob inspeção) -->
+                <div id="editInspectionReplyContainer" style="display: none; margin-top: 15px; margin-bottom: 15px; background: rgba(245, 158, 11, 0.08); border: 1px solid #f59e0b; padding: 15px; border-radius: 8px;">
+                    <label style="display: block; color: #f59e0b; font-size: 0.9rem; margin-bottom: 5px; font-weight: bold;">⏳ Projeto Sob Inspeção - Resposta para o Inspetor</label>
+                    <p style="font-size: 0.8rem; color: #d8b4fe; margin-bottom: 10px;">Descreva as correções efetuadas para que o administrador possa reavaliar e reativar o seu projeto:</p>
+                    <textarea id="editInspectionReply" rows="3" placeholder="Escreva aqui a sua resposta/correção..." style="width: 100%; padding: 10px; background: #0f0e17; border: 1px solid #3f3d56; color: #fff; border-radius: 6px; resize: none; font-size: 0.85rem;"></textarea>
+                </div>
+
                 <div style="margin-top: 10px; margin-bottom: 15px; background: #0f0e17; padding: 12px; border-radius: 8px; border: 1px solid #3f3d56;">
                     <label style="display: block; color: #d8b4fe; font-size: 0.85rem; margin-bottom: 6px;">👥 Integrantes da Equipe (Gerir Colaboradores)</label>
                     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -288,6 +317,24 @@
         </div>
     </div>
 
+    <!-- Scripts da Aplicação -->
     <script src="home.js"></script>
+    <script>
+        // Função de verificação e carregamento assíncrono independente para evitar travamentos
+        async function verificarSessaoDashboard() {
+            const token = obterToken();
+            if (!token) return;
+
+            // Executa os carregamentos de forma independente para que falhas pontuais não bloqueiem a home
+            atualizarPerfilMenu(token).catch(e => console.warn('Perfil indisponível', e));
+            carregarProjetosHome().catch(e => console.error('Erro ao carregar projetos:', e));
+            carregarMensagensPrivadas().catch(e => console.warn('Mensagens indisponíveis', e));
+            carregarProjetosSobInspecaoUsuario().catch(e => console.warn('Inspeções indisponíveis', e));
+            verificarPermissoesAdmin().catch(e => console.warn('Permissões admin indisponíveis', e));
+            carregarNotificacoes().catch(e => console.warn('Notificações indisponíveis', e));
+            carregarCampanhasNoSelect().catch(e => console.warn('Campanhas indisponíveis', e));
+            carregarLeaderboard().catch(e => console.warn('Leaderboard indisponível', e));
+        }
+    </script>
 </body>
 </html>

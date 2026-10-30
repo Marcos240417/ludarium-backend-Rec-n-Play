@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludarium - Painel Administrativo</title>
+    <link rel="stylesheet" href="admin.css">
+    <link rel="icon" href="data:,">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar de Navegação -->
+        <aside class="sidebar" style="display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;">
+            <div class="logo-area">
+                <h2>🎮 Ludarium</h2>
+                <span>Back-Office de Gestão</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" onclick="switchTab('overview')">📊 Visão Geral</li>
+                <li onclick="switchTab('users')">👥 Utilizadores</li>
+                <li onclick="switchTab('projects')">📂 Projetos</li>
+                <li onclick="switchTab('denuncias')">🛡️ Denúncias <span id="badge-denuncias" style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; margin-left: 6px; display: none;">0</span></li>
+                <li onclick="switchTab('gateway')">🌐 Estado do Gateway</li>
+            </ul>
+
+            <!-- Botões de Navegação Inferior (Voltar e Sair) -->
+            <div style="margin-top: auto; padding: 15px 20px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button onclick="voltarHome()" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; width: 100%; transition: background 0.2s;">
+                    🏠 Voltar para a Home
+                </button>
+                <button onclick="sairSessao()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; width: 100%; transition: background 0.2s;">
+                    🚪 Sair
+                </button>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <header>
+                <h1>Painel de Controlo Operacional</h1>
+                <div class="status-badge"><span class="dot"></span> Sistema Ativo (Windows Native)</div>
+            </header>
+
+            <!-- Aba: Visão Geral -->
+            <section id="overview-tab" class="tab-content active">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-info">
+                            <h3>Utilizadores Registados</h3>
+                            <p id="stat-users">Carregando...</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-info">
+                            <h3>Projetos Ativos</h3>
+                            <p id="stat-projects">Carregando...</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-info">
+                            <h3>Campanhas & XP Ativas</h3>
+                            <p id="stat-campaigns">Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <h2>Ações Rápidas de Demonstração</h2>
+                    <div class="action-buttons">
+                        <button onclick="pingServices()">🔄 Verificar Saúde dos Microsserviços</button>
+                        <button onclick="exportDossierReport()">📥 Exportar Relatório Dossiê</button>
+                    </div>
+                    <div id="health-results" class="health-box"></div>
+                </div>
+            </section>
+
+            <!-- Aba: Utilizadores -->
+            <section id="users-tab" class="tab-content">
+                <h2>Gestão de Utilizadores (Auth Service - 8001)</h2>
+                
+                <!-- Tabela de Utilizadores Ativos -->
+                <h3 style="margin-top: 20px; font-size: 1.1rem; color: var(--success);">🟢 Utilizadores Ativos</h3>
+                <div class="table-responsive" style="margin-bottom: 30px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome / Email</th>
+                                <th>Estado</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr><td colspan="4">A carregar utilizadores ativos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tabela de Utilizadores Suspensos -->
+                <h3 style="font-size: 1.1rem; color: #f59e0b;">🟠 Utilizadores Suspensos (Contagem Ativa)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome / Email</th>
+                                <th>Tempo Restante para Liberação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suspended-users-table-body">
+                            <tr><td colspan="4">Nenhum utilizador suspenso no momento.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Aba: Projetos -->
+            <section id="projects-tab" class="tab-content">
+                <h2>Gestão de Projetos e Portefólios (Project Service - 8081)</h2>
+                
+                <!-- Tabela de Projetos Ativos -->
+                <h3 style="color: var(--success); margin-top: 20px; font-size: 1.1rem;">🟢 Projetos Ativos</h3>
+                <div class="table-responsive" style="margin-bottom: 30px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID do Projeto</th>
+                                <th>Título</th>
+                                <th>Repositório / Responsável</th>
+                                <th>Estado</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-table-body">
+                            <tr><td colspan="5">A ligar ao Project Service...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tabela de Projetos Aguardando Correção -->
+                <h3 style="color: #f59e0b; margin-top: 20px; font-size: 1.1rem;">⏳ Projetos Sob Inspeção (Aguardando Correção do Utilizador)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID do Projeto</th>
+                                <th>Título</th>
+                                <th>Repositório / Responsável</th>
+                                <th>Estado / Alerta</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inspection-projects-table-body">
+                            <tr><td colspan="5">Nenhum projeto sob inspeção no momento.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Aba: Moderação de Denúncias -->
+            <section id="denuncias-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <h2>🛡️ Moderação de Denúncias de Fóruns</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Analise denúncias enviadas pelos utilizadores, verifique evidências e aplique medidas disciplinares.</p>
+                    </div>
+                    <button onclick="carregarDenunciasAdmin()" style="background: var(--accent-color); padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer;">🔄 Atualizar Denúncias</button>
+                </div>
+                
+                <div id="lista-denuncias-admin" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <p style="color: var(--text-muted);">A carregar denúncias pendentes...</p>
+                </div>
+            </section>
+
+            <!-- Aba: Gateway -->
+            <section id="gateway-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <h2>Estado do Ecossistema em Rede (API Gateway - 8005)</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">Monitorização em tempo real de portas e rotas encaminhadas pelo Gateway central.</p>
+                    </div>
+                    <button onclick="pingServices()" style="background: var(--accent-color); padding: 0.5rem 1rem; font-size: 0.85rem;">🔄 Atualizar Estado</button>
+                </div>
+                
+                <div id="gateway-status-grid" class="gateway-grid">
+                    <p style="color: var(--text-muted);">A testar portas locais do ecossistema...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de Gestão de Utilizador -->
+    <div id="user-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeUserModal()">&times;</span>
+            <h2 id="modal-username" style="color: var(--accent-color); margin-bottom: 5px;">Gerir Utilizador</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">ID do Registo: <span id="modal-user-id"></span></p>
+            
+            <div class="modal-actions-group">
+                <h3 style="font-size: 1rem; margin-bottom: 10px;">⚠️ Controlo de Estado e Acesso</h3>
+                <div class="action-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="suspendUser(7)" style="background:#f59e0b; padding: 0.5rem 0.8rem; font-size: 0.85rem;">Suspender (7d)</button>
+                    <button onclick="unsuspendUser()" style="background:#22c55e; padding: 0.5rem 0.8rem; font-size: 0.85rem;">Reativar</button>
+                    <button onclick="deleteUser()" style="background:#ef4444; padding: 0.5rem 0.8rem; font-size: 0.85rem;">Excluir</button>
+                </div>
+            </div>
+
+            <div class="modal-actions-group" style="margin-top: 20px;">
+                <h3 style="font-size: 1rem; margin-bottom: 5px;">✉️ Enviar Mensagem Direta</h3>
+                <textarea id="admin-msg-content" placeholder="Escreva a mensagem oficial para o utilizador..." style="width:100%; height:85px; background:#090d16; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:10px; margin-top:5px; resize: none;"></textarea>
+                <button onclick="sendAdminMessage()" style="margin-top: 10px; background: var(--accent-color); width: 100%; justify-content: center;">Enviar Mensagem</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Inspeção e Moderação de Projetos -->
+    <div id="project-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="width: 520px;">
+            <span class="close-btn" onclick="closeProjectModal()">&times;</span>
+            <h2 id="modal-project-title" style="color: var(--accent-color); margin-bottom: 5px;">Inspecionar Projeto</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">ID do Registo: <span id="modal-project-id"></span></p>
+            
+            <div class="modal-info-group" style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border-color); max-height: 125px; overflow-y: auto;">
+                <p style="margin-bottom: 4px; font-size: 0.85rem;"><strong>Autoria / Equipa:</strong> <span id="modal-project-authors" style="color: #38bdf8; font-weight: 600;">N/A</span></p>
+                <p style="margin-bottom: 4px; font-size: 0.85rem;"><strong>Descrição:</strong> <span id="modal-project-desc">N/A</span></p>
+                <p style="margin-bottom: 4px; font-size: 0.85rem;"><strong>Tags:</strong> <span id="modal-project-tags">N/A</span> | <strong>Progresso:</strong> <span id="modal-project-progress">0</span>%</p>
+            </div>
+
+            <!-- Resposta de Correção Enviada pelo Utilizador -->
+            <div id="adminInspectionReplyContainer" style="margin-bottom: 15px; display: none;">
+                <label style="display: block; color: #f59e0b; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">💬 Resposta / Correção Enviada pelo Criador:</label>
+                <div id="adminInspectionReplyText" style="background: #0f0e17; border: 1px solid rgba(245, 158, 11, 0.4); padding: 10px; border-radius: 6px; color: #fff; font-size: 0.85rem; white-space: pre-wrap; max-height: 100px; overflow-y: auto;"></div>
+            </div>
+
+            <!-- Formulário de Relatório de Inspeção -->
+            <div class="inspection-form" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-muted);">Motivo da Inspeção:</label>
+                    <select id="inspection-reason" style="width:100%; background:#090d16; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-top:4px;">
+                        <option value="Conteúdo Impróprio / Violação de Termos">Conteúdo Impróprio / Violação de Termos</option>
+                        <option value="Erro Técnico / Build Web Quebrada">Erro Técnico / Build Web Quebrada</option>
+                        <option value="Problema de Direitos Autorais">Problema de Direitos Autorais</option>
+                        <option value="Informações Incompletas ou Spam">Informações Incompletas ou Spam</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-muted);">Prazo para Correção (Dias):</label>
+                    <input type="number" id="inspection-deadline" value="3" min="1" max="30" style="width:100%; background:#090d16; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-top:4px;">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-muted);">Mensagem Direta / Relatório para o Autor / Equipa:</label>
+                    <textarea id="inspection-message" placeholder="Descreva detalhadamente o erro relatado para que o criador ou todos os membros da equipa visualizem e corrijam..." style="width:100%; height:75px; background:#090d16; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-top:4px; resize: none;"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="submitProjectInspection()" style="background:#f59e0b; padding: 0.6rem 0.8rem; font-size: 0.8rem; flex: 1; justify-content: center;">⚠️ Notificar</button>
+                <button onclick="aprovarProjetoAdmin()" style="background:#22c55e; padding: 0.6rem 0.8rem; font-size: 0.8rem; justify-content: center;">✅ Aprovar</button>
+                <button onclick="reprovarProjetoAdmin()" style="background:#ef4444; padding: 0.6rem 0.8rem; font-size: 0.8rem; justify-content: center;">❌ Reprovar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Visualizar Evidência / Imagem Ampliada -->
+    <div id="modal-evidencia" class="modal" style="display:none; z-index: 2000;">
+        <div class="modal-content" style="max-width: 600px; display: flex; flex-direction: column; align-items: center;">
+            <span class="close-btn" onclick="fecharModalEvidencia()">&times;</span>
+            <h2 style="color: var(--accent-color); margin-bottom: 15px;">Evidência Anexada</h2>
+            <img id="img-evidencia-full" src="" alt="Evidência" style="max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

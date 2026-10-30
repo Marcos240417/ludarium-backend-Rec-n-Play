@@ -9,6 +9,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    status = Column(String, default="Ativo (BD)")
+    suspended_until = Column(DateTime, nullable=True)
 
 class PrivateMessage(Base):
     __tablename__ = "private_messages"

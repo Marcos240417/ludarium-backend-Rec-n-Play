@@ -1,3 +1,6 @@
+/* ==========================================
+   LUDARIUM - COMUNIDADE (COMMUNITY.CSS)
+   ========================================== */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -12,30 +15,27 @@ body {
 }
 
 /* Barra de Navegação */
-.navbar {
+.main-navbar {
     background-color: #1e293b;
     border-bottom: 1px solid #334155;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1400px;
+    margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
 }
 
-.logo {
+.nav-brand {
     font-weight: bold;
     font-size: 1.25rem;
     color: #7c3aed;
-}
-
-.main-navbar .nav-container {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-}
-
-.nav-brand {
-    font-weight: 600;
-    color: #94a3b8;
 }
 
 .nav-links {
@@ -58,7 +58,7 @@ body {
 
 /* Contentor Principal */
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 2rem 1rem;
 }
@@ -73,6 +73,8 @@ body {
     padding: 2rem;
     border-radius: 12px;
     border: 1px solid #334155;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .hero-text h1 {
@@ -115,7 +117,10 @@ body {
     .hero-section {
         flex-direction: column;
         align-items: flex-start;
-        gap: 1rem;
+    }
+    .whatsapp-container {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
     }
 }
 
@@ -141,6 +146,25 @@ body {
     padding-bottom: 0.5rem;
 }
 
+/* Estilização de Scrollbars para Chat e Listas */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
 /* Modais */
 .modal {
     display: none;
@@ -159,7 +183,7 @@ body {
     background: #1e293b;
     padding: 2rem;
     border-radius: 12px;
-    width: 450px;
+    width: 480px;
     max-width: 90%;
     border: 1px solid #334155;
     position: relative;
@@ -185,6 +209,7 @@ body {
     border-radius: 6px;
     color: white;
     font-size: 0.95rem;
+    width: 100%;
 }
 
 .modal-content input:focus,

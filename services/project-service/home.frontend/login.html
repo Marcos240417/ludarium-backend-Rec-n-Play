@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="login.css">
 </head>
 <body>
+    <!-- Container global para mensagens Toast flutuantes -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+
     <div id="loginScreen">
         <div class="login-container">
             <div class="login-hero">
@@ -48,37 +51,37 @@
                 
                 <div id="authFormContainer">
                     <div id="usernameFieldContainer" style="display: none;">
-                        <label>NOME DE UTILIZADOR</label>
-                        <input type="text" id="regUsername" placeholder="Ex.: dev_indie">
+                        <label for="regUsername">NOME DE UTILIZADOR</label>
+                        <input type="text" id="regUsername" placeholder="Ex.: dev_indie" autocomplete="username">
                     </div>
 
-                    <label id="labelUserEmail">UTILIZADOR OU EMAIL</label>
-                    <input type="text" id="loginUser" placeholder="Ex.: admin ou email@teste.com">
+                    <label id="labelUserEmail" for="loginUser">UTILIZADOR OU EMAIL</label>
+                    <input type="text" id="loginUser" placeholder="Ex.: admin ou email@teste.com" autocomplete="email">
                     
-                    <label>SENHA</label>
-                    <input type="password" id="loginPass" placeholder="••••••••">
+                    <label for="loginPass">SENHA</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
                     
-                    <div id="suggestionsBox" class="suggestions-box" style="display: none;">
-                        <p class="suggestions-title">⚠️ Este utilizador já existe. Sugestões disponíveis:</p>
-                        <div id="suggestionsList" class="suggestions-list"></div>
+                    <div id="suggestionsBox" class="suggestions-box" style="display: none; margin-top: 10px; padding: 10px; background: rgba(124, 58, 237, 0.1); border: 1px solid #7c3aed; border-radius: 6px;">
+                        <p class="suggestions-title" style="font-size: 0.85rem; color: #d8b4fe; margin-bottom: 6px;">⚠️ Este utilizador já existe. Sugestões disponíveis:</p>
+                        <div id="suggestionsList" class="suggestions-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
                     </div>
 
-                    <button class="btn-primary" id="authBtnAction" onclick="executarAcaoAuth()">ENTRAR NA LUDARIUM →</button>
+                    <button class="btn-primary" id="authBtnAction" onclick="executarAcaoAuth()" style="margin-top: 15px; width: 100%;">ENTRAR NA LUDARIUM →</button>
                 </div>
 
-                <div class="auth-toggle-box">
+                <div class="auth-toggle-box" style="margin-top: 20px; text-align: center;">
                     <span id="toggleText">Ainda não tem conta?</span>
-                    <a href="#" id="toggleLink" onclick="alternarModoAuth(event)">Criar uma conta</a>
+                    <a href="#" id="toggleLink" onclick="alternarModoAuth(event)" style="color: var(--accent); text-decoration: none; font-weight: bold; margin-left: 5px;">Criar uma conta</a>
                 </div>
 
-                <div class="demo-divider"><span>Acesso Demonstrativo</span></div>
+                <div class="demo-divider" style="margin: 20px 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); line-height: 0.1em;"><span style="background: var(--bg-card, #1e1b4b); padding: 0 10px; color: var(--text-muted); font-size: 0.8rem;">Acesso Demonstrativo</span></div>
 
-                <div class="demo-profile-box">
+                <div class="demo-profile-box" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
                     <div>
                         <div style="font-size: 0.7rem; color: var(--text-muted);">PERFIL ADMIN</div>
-                        <div class="profile-name">admin / admin</div>
+                        <div class="profile-name" style="font-weight: 600; font-size: 0.9rem;">admin / admin</div>
                     </div>
-                    <button onclick="preencherAdminDemo()" style="background: var(--accent); border: none; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Usar</button>
+                    <button onclick="preencherAdminDemo()" style="background: var(--accent); border: none; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Usar</button>
                 </div>
             </div>
         </div>

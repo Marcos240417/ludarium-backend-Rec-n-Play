@@ -6,8 +6,10 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text, select
+from sqlalchemy.orm import selectinload
+from pydantic import BaseModel
 import models, database, schemas
 import httpx
 
@@ -28,31 +30,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Montar a pasta estática correta (home.frontend)
-app.mount("/frontend", StaticFiles(directory="home.frontend"), name="frontend")
+# Caminho base absoluto do diretório onde este main.py está localizado
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 4. Criar as tabelas e aplicar auto-correções na base de dados
-models.Base.metadata.create_all(bind=database.engine)
+# 3. Montagem segura da pasta estática correta (home.frontend) por caminho absoluto
+FRONTEND_DIR = os.path.join(BASE_DIR, "home.frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
 
-with database.engine.begin() as conn:
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS favorito INTEGER DEFAULT 0;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS build_path VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS executavel_navegador INTEGER DEFAULT 0;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS poster_path VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id VARCHAR;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS campaign_id INTEGER;"))
-    conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS members VARCHAR;"))
+# 4. Montar a pasta externa do painel de administração (admin-dashboard) por caminho absoluto 
+ADMIN_DIR = os.path.abspath(os.path.join(BASE_DIR, "../admin-dashboard"))
+if not os.path.exists(ADMIN_DIR):
+    os.makedirs(ADMIN_DIR, exist_ok=True)
+app.mount("/admin-dashboard", StaticFiles(directory=ADMIN_DIR), name="admin-dashboard")
 
-DIRETORIO_BUILDS = "sandbox_builds"
-DIRETORIO_POSTERS = "sandbox_posters"
+# 5. Evento de arranque assíncrono para criar tabelas e aplicar auto-correções na base de dados
+@app.on_event("startup")
+async def startup_event():
+    async with database.engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+        
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS favorito INTEGER DEFAULT 0;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS build_path VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS executavel_navegador INTEGER DEFAULT 0;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS poster_path VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS campaign_id INTEGER;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS members VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ativo';"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS inspection_reason VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS inspection_message VARCHAR;"))
+        await conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS inspection_reply VARCHAR;"))
+
+DIRETORIO_BUILDS = os.path.join(BASE_DIR, "sandbox_builds")
+DIRETORIO_POSTERS = os.path.join(BASE_DIR, "sandbox_posters")
 
 os.makedirs(DIRETORIO_BUILDS, exist_ok=True)
 os.makedirs(DIRETORIO_POSTERS, exist_ok=True)
 
-# Servir ficheiros estáticos para as builds web e imagens de poster
 app.mount("/sandbox", StaticFiles(directory=DIRETORIO_BUILDS), name="sandbox")
 app.mount("/posters", StaticFiles(directory=DIRETORIO_POSTERS), name="posters")
+
+class InspectionRequest(BaseModel):
+    reason: str = "Revisão necessária"
+    deadline_days: int = 7
+    report_message: str = "Por favor, corrija os pontos indicados."
+    status: str = "Sob Inspeção (Aguardando Correção)"
+
+class InspectionReplyRequest(BaseModel):
+    reply_message: str
 
 def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -62,21 +89,24 @@ def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
+        email: str = payload.get("sub") or payload.get("email")
         if email is None:
-            return "admin"
+            raise credentials_exception
         return email
     except JWTError:
-        return "admin"
+        raise credentials_exception
 
 @app.get("/")
 def ler_raiz():
-    return {"mensagem": "Project Service com autenticação JWT, suporte a builds web, posters e vínculo por utilizador a funcionar!"}
+    return {"mensagem": "Project Service com autenticação JWT, suporte a builds web, posters e inspeção a funcionar!"}
 
 @app.get("/projects", response_model=list[schemas.ProjectResponse])
 @app.get("/projects/", response_model=list[schemas.ProjectResponse])
-def listar_projetos(tag: str | None = Query(None), db: Session = Depends(database.get_db)):
-    projetos = db.query(models.ProjectModel).all()
+async def listar_projetos(tag: str | None = Query(None), db: AsyncSession = Depends(database.get_db)):
+    result = await db.execute(
+        select(models.ProjectModel).options(selectinload(models.ProjectModel.comentarios))
+    )
+    projetos = result.scalars().all()
     
     if not projetos:
         p1 = models.ProjectModel(
@@ -89,11 +119,12 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             favorito=0,
             executavel_navegador=1,
             build_path="sandbox_builds/neon_afterlight",
-            poster_path=None
+            poster_path=None,
+            status="Ativo"
         )
         db.add(p1)
-        db.commit()
-        db.refresh(p1)
+        await db.commit()
+        await db.refresh(p1)
         
         c1 = models.ProjectCommentModel(
             project_id=p1.id,
@@ -102,7 +133,7 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             conteudo="A direção de arte está espetacular!"
         )
         db.add(c1)
-        db.commit()
+        await db.commit()
         
         p2 = models.ProjectModel(
             title="Mossvale",
@@ -114,27 +145,16 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             favorito=1,
             executavel_navegador=1,
             build_path="sandbox_builds/mossvale",
-            poster_path=None
+            poster_path=None,
+            status="Ativo"
         )
         db.add(p2)
-        db.commit()
+        await db.commit()
         
-        p3 = models.ProjectModel(
-            title="Signal / Lost",
-            studio="Void Assembly",
-            description="Terror cooperativo de ficção científica. Decifre o sinal antes que ele encontre você.",
-            progress=60,
-            tags="unreal,3d,sci-fi",
-            likes=870,
-            favorito=0,
-            executavel_navegador=0,
-            build_path=None,
-            poster_path=None
+        result = await db.execute(
+            select(models.ProjectModel).options(selectinload(models.ProjectModel.comentarios))
         )
-        db.add(p3)
-        db.commit()
-        
-        projetos = db.query(models.ProjectModel).all()
+        projetos = result.scalars().all()
     
     resultado = []
     for p in projetos:
@@ -168,6 +188,10 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
             "user_id": p.user_id,
             "campaign_id": getattr(p, 'campaign_id', None),
             "members": getattr(p, 'members', ""),
+            "status": getattr(p, 'status', 'Ativo'),
+            "inspection_reason": getattr(p, 'inspection_reason', None),
+            "inspection_message": getattr(p, 'inspection_message', None),
+            "inspection_reply": getattr(p, 'inspection_reply', None),
             "comments_count": len(comentarios_formatados),
             "comentarios": comentarios_formatados
         })
@@ -175,7 +199,7 @@ def listar_projetos(tag: str | None = Query(None), db: Session = Depends(databas
 
 @app.post("/projects", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
 @app.post("/projects/", response_model=schemas.ProjectResponse, status_code=status.HTTP_201_CREATED)
-def criar_projeto_root(
+async def criar_projeto_root(
     title: str = Form(...),
     studio: str = Form("Estúdio Independente"),
     description: str = Form(...),
@@ -186,7 +210,7 @@ def criar_projeto_root(
     members: str = Form(""),
     poster: UploadFile | None = None,
     build_file: UploadFile | None = None,
-    db: Session = Depends(database.get_db),
+    db: AsyncSession = Depends(database.get_db),
     token: str | None = Depends(OAuth2PasswordBearer(tokenUrl="http://localhost:8001/login", auto_error=False))
 ):
     utilizador_email = "user1@user.com"
@@ -253,12 +277,13 @@ def criar_projeto_root(
         owner=utilizador_email,
         user_id=utilizador_email,
         campaign_id=campaign_id,
-        members=members
+        members=members,
+        status="Ativo"
     )
 
     db.add(novo_projeto)
-    db.commit()
-    db.refresh(novo_projeto)
+    await db.commit()
+    await db.refresh(novo_projeto)
 
     p_tags = [t.strip() for t in novo_projeto.tags.split(",") if t.strip()] if novo_projeto.tags else []
     
@@ -274,19 +299,88 @@ def criar_projeto_root(
         "executavel_navegador": novo_projeto.executavel_navegador,
         "build_path": novo_projeto.build_path,
         "poster_path": novo_projeto.poster_path,
+        "owner": novo_projeto.owner,
+        "user_id": novo_projeto.user_id,
         "campaign_id": getattr(novo_projeto, 'campaign_id', None),
         "members": getattr(novo_projeto, 'members', ""),
+        "status": getattr(novo_projeto, 'status', 'Ativo'),
+        "inspection_reason": getattr(novo_projeto, 'inspection_reason', None),
+        "inspection_message": getattr(novo_projeto, 'inspection_message', None),
+        "inspection_reply": getattr(novo_projeto, 'inspection_reply', None),
         "comments_count": 0,
         "comentarios": []
     }
 
-@app.delete("/projects/{project_id}")
-def excluir_projeto(
+@app.post("/projects/{project_id}/inspect")
+@app.patch("/projects/{project_id}/inspect")
+async def inspecionar_projeto(
     project_id: int,
-    db: Session = Depends(database.get_db),
+    payload: InspectionRequest | dict = None,
+    db: AsyncSession = Depends(database.get_db),
     utilizador_email: str = Depends(obter_utilizador_atual)
 ):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+
+    novo_status = "Sob Inspeção (Aguardando Correção)"
+    if payload:
+        if isinstance(payload, dict):
+            novo_status = payload.get("status", "Sob Inspeção (Aguardando Correção)")
+            p.inspection_reason = payload.get("reason", p.inspection_reason)
+            p.inspection_message = payload.get("report_message", p.inspection_message)
+        elif hasattr(payload, "status") and payload.status:
+            novo_status = payload.status
+            if hasattr(payload, "reason") and payload.reason:
+                p.inspection_reason = payload.reason
+            if hasattr(payload, "report_message") and payload.report_message:
+                p.inspection_message = payload.report_message
+
+    p.status = novo_status
+    db.add(p)
+    await db.commit()
+    await db.refresh(p)
+
+    p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
+    comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
+
+    return {
+        "id": p.id,
+        "title": p.title,
+        "studio": p.studio,
+        "description": p.description,
+        "progress": p.progress,
+        "tags": p_tags,
+        "likes": p.likes,
+        "favorito": p.favorito,
+        "executavel_navegador": p.executavel_navegador,
+        "build_path": p.build_path,
+        "poster_path": p.poster_path,
+        "owner": p.owner,
+        "user_id": p.user_id,
+        "campaign_id": getattr(p, 'campaign_id', None),
+        "members": getattr(p, 'members', ""),
+        "status": p.status,
+        "inspection_reason": p.inspection_reason,
+        "inspection_message": p.inspection_message,
+        "inspection_reply": p.inspection_reply,
+        "comments_count": len(comentarios_formatados),
+        "comentarios": comentarios_formatados
+    }
+
+@app.delete("/projects/{project_id}")
+async def excluir_projeto(
+    project_id: int,
+    db: AsyncSession = Depends(database.get_db),
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    result = await db.execute(select(models.ProjectModel).where(models.ProjectModel.id == project_id))
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
 
@@ -299,19 +393,24 @@ def excluir_projeto(
             detail="Não tem permissão para excluir este projeto."
         )
 
-    db.delete(p)
-    db.commit()
+    await db.delete(p)
+    await db.commit()
     return {"message": "Projeto excluído com sucesso!"}
 
 @app.patch("/projects/{project_id}/avaliar", response_model=schemas.ProjectResponse)
-def avaliar_projeto_estrela(project_id: int, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+async def avaliar_projeto_estrela(project_id: int, db: AsyncSession = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     
     p.likes += 1
-    db.commit()
-    db.refresh(p)
+    await db.commit()
+    await db.refresh(p)
     
     p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
@@ -328,15 +427,26 @@ def avaliar_projeto_estrela(project_id: int, db: Session = Depends(database.get_
         "executavel_navegador": p.executavel_navegador,
         "build_path": p.build_path,
         "poster_path": p.poster_path,
+        "owner": p.owner,
+        "user_id": p.user_id,
         "campaign_id": getattr(p, 'campaign_id', None),
         "members": getattr(p, 'members', ""),
+        "status": getattr(p, 'status', 'Ativo'),
+        "inspection_reason": getattr(p, 'inspection_reason', None),
+        "inspection_message": getattr(p, 'inspection_message', None),
+        "inspection_reply": getattr(p, 'inspection_reply', None),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
 
 @app.get("/projects/{project_id}", response_model=schemas.ProjectResponse)
-def obter_projeto(project_id: int, db: Session = Depends(database.get_db)):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+async def obter_projeto(project_id: int, db: AsyncSession = Depends(database.get_db)):
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     
@@ -355,15 +465,26 @@ def obter_projeto(project_id: int, db: Session = Depends(database.get_db)):
         "executavel_navegador": p.executavel_navegador,
         "build_path": p.build_path,
         "poster_path": p.poster_path,
+        "owner": p.owner,
+        "user_id": p.user_id,
         "campaign_id": getattr(p, 'campaign_id', None),
         "members": getattr(p, 'members', ""),
+        "status": getattr(p, 'status', 'Ativo'),
+        "inspection_reason": getattr(p, 'inspection_reason', None),
+        "inspection_message": getattr(p, 'inspection_message', None),
+        "inspection_reply": getattr(p, 'inspection_reply', None),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
 
 @app.post("/projects/{project_id}/comentarios", response_model=schemas.ComentarioProjetoResponse, status_code=status.HTTP_201_CREATED)
-def adicionar_comentario_projeto(project_id: int, comentario: schemas.ComentarioProjetoCreate, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+async def adicionar_comentario_projeto(project_id: int, comentario: schemas.ComentarioProjetoCreate, db: AsyncSession = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     
@@ -374,13 +495,13 @@ def adicionar_comentario_projeto(project_id: int, comentario: schemas.Comentario
         conteudo=comentario.conteudo
     )
     db.add(novo_comentario)
-    db.commit()
-    db.refresh(novo_comentario)
+    await db.commit()
+    await db.refresh(novo_comentario)
 
     if p.owner and p.owner != utilizador_email:
         try:
-            with httpx.Client() as client:
-                client.post(
+            async with httpx.AsyncClient() as client:
+                await client.post(
                     "http://localhost:8002/notifications",
                     params={
                         "destinatario_email": p.owner,
@@ -394,7 +515,7 @@ def adicionar_comentario_projeto(project_id: int, comentario: schemas.Comentario
     return novo_comentario
 
 @app.get("/campaigns/featured", response_model=schemas.CampaignResponse)
-def obter_campanha_destaque(db: Session = Depends(database.get_db)):
+def obter_campanha_destaque(db: AsyncSession = Depends(database.get_db)):
     return {
         "id": 1,
         "title": "Folclore Reimaginado",
@@ -404,7 +525,7 @@ def obter_campanha_destaque(db: Session = Depends(database.get_db)):
     }
 
 @app.get("/communities", response_model=list[schemas.CommunityResponse])
-def listar_comunidades(db: Session = Depends(database.get_db)):
+def listar_comunidades(db: AsyncSession = Depends(database.get_db)):
     return [
         {"id": 1, "name": "Dev Indie Brasil", "members_count": "12,8 mil membros"},
         {"id": 2, "name": "Godot em Português", "members_count": "8,2 mil membros"},
@@ -413,13 +534,18 @@ def listar_comunidades(db: Session = Depends(database.get_db)):
 
 @app.put("/projects/{project_id}", response_model=schemas.ProjectResponse)
 @app.put("/projects/{project_id}/", response_model=schemas.ProjectResponse)
-def atualizar_projeto(
+async def atualizar_projeto(
     project_id: int,
     projeto_dados: schemas.ProjectUpdate,
-    db: Session = Depends(database.get_db),
+    db: AsyncSession = Depends(database.get_db),
     utilizador_email: str = Depends(obter_utilizador_atual)
 ):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado.")
     
@@ -445,8 +571,12 @@ def atualizar_projeto(
     if projeto_dados.members is not None:
         p.members = projeto_dados.members
     
-    db.commit()
-    db.refresh(p)
+    if hasattr(projeto_dados, 'inspection_reply') and projeto_dados.inspection_reply is not None:
+        p.inspection_reply = projeto_dados.inspection_reply
+        p.status = "Sob Inspeção (Aguardando Revisão do Admin)"
+    
+    await db.commit()
+    await db.refresh(p)
     
     p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
@@ -467,6 +597,10 @@ def atualizar_projeto(
         "members": getattr(p, 'members', ""),
         "owner": p.owner,
         "user_id": p.user_id,
+        "status": getattr(p, 'status', 'Ativo'),
+        "inspection_reason": getattr(p, 'inspection_reason', None),
+        "inspection_message": getattr(p, 'inspection_message', None),
+        "inspection_reply": getattr(p, 'inspection_reply', None),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
@@ -490,14 +624,19 @@ async def testar_projeto(
     return {"mensagem": "Teste registado com sucesso e +75 XP adicionados ao seu perfil!"}
 
 @app.patch("/projects/{project_id}/favorito", response_model=schemas.ProjectResponse)
-def alternar_favorito(project_id: int, db: Session = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
-    p = db.query(models.ProjectModel).filter(models.ProjectModel.id == project_id).first()
+async def alternar_favorito(project_id: int, db: AsyncSession = Depends(database.get_db), utilizador_email: str = Depends(obter_utilizador_atual)):
+    result = await db.execute(
+        select(models.ProjectModel)
+        .options(selectinload(models.ProjectModel.comentarios))
+        .where(models.ProjectModel.id == project_id)
+    )
+    p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     
     p.favorito = 0 if p.favorito == 1 else 1
-    db.commit()
-    db.refresh(p)
+    await db.commit()
+    await db.refresh(p)
     
     p_tags = [t.strip() for t in p.tags.split(",") if t.strip()] if p.tags else []
     comentarios_formatados = [{"id": c.id, "project_id": c.project_id, "autor": c.autor, "autor_arroba": c.autor_arroba, "conteudo": c.conteudo} for c in p.comentarios]
@@ -518,6 +657,67 @@ def alternar_favorito(project_id: int, db: Session = Depends(database.get_db), u
         "members": getattr(p, 'members', ""),
         "owner": p.owner,
         "user_id": p.user_id,
+        "status": getattr(p, 'status', 'Ativo'),
+        "inspection_reason": getattr(p, 'inspection_reason', None),
+        "inspection_message": getattr(p, 'inspection_message', None),
+        "inspection_reply": getattr(p, 'inspection_reply', None),
         "comments_count": len(comentarios_formatados),
         "comentarios": comentarios_formatados
     }
+
+@app.post("/projects/{project_id}/aprovar")
+@app.patch("/projects/{project_id}/aprovar")
+async def aprovar_projeto(
+    project_id: int,
+    db: AsyncSession = Depends(database.get_db),
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    result = await db.execute(select(models.ProjectModel).where(models.ProjectModel.id == project_id))
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    
+    p.status = "Ativo"
+    p.inspection_reason = None
+    p.inspection_message = None
+    await db.commit()
+    await db.refresh(p)
+    return {"message": "Projeto aprovado e reativado com sucesso!", "status": p.status}
+
+@app.post("/projects/{project_id}/reprovar")
+@app.patch("/projects/{project_id}/reprovar")
+async def reprovar_projeto(
+    project_id: int,
+    payload: InspectionRequest = None,
+    db: AsyncSession = Depends(database.get_db),
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    result = await db.execute(select(models.ProjectModel).where(models.ProjectModel.id == project_id))
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    
+    p.status = "Sob Inspeção (Correção Reprovada - Nova Revisão)"
+    if payload and payload.report_message:
+        p.inspection_message = payload.report_message
+    await db.commit()
+    await db.refresh(p)
+    return {"message": "Correção reprovada.", "status": p.status}    
+
+@app.post("/projects/{project_id}/reply-inspection")
+async def reply_inspection(
+    project_id: int,
+    payload: InspectionReplyRequest,
+    db: AsyncSession = Depends(database.get_db),
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    result = await db.execute(select(models.ProjectModel).where(models.ProjectModel.id == project_id))
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+    
+    p.inspection_reply = payload.reply_message
+    p.status = "Sob Inspeção (Aguardando Revisão do Admin)"
+    await db.commit()
+    await db.refresh(p)
+    return {"message": "Devolução de correção enviada com sucesso!", "status": p.status}

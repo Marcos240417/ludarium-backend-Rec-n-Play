@@ -20,6 +20,10 @@ class ProjectModel(Base):
     owner = Column(String, nullable=True)
     user_id = Column(String, nullable=True)
     members = Column(String, default="")
+    status = Column(String, default="Ativo")  
+    inspection_reason = Column(String, nullable=True)
+    inspection_message = Column(String, nullable=True)
+    inspection_reply = Column(String, nullable=True)
 
     comentarios = relationship("ProjectCommentModel", back_populates="projeto", cascade="all, delete-orphan")
 

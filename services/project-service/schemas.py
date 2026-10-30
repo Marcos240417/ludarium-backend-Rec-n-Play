@@ -26,10 +26,14 @@ class ProjectResponse(BaseModel):
     executavel_navegador: Optional[int] = 0
     build_path: Optional[str] = None
     poster_path: Optional[str] = None
-    campaign_id: Optional[int] = None  # Adicionado para retornar a campanha vinculada
-    members: Optional[str] = ""          # Adicionado para retornar a lista de colaboradores
+    campaign_id: Optional[int] = None
+    members: Optional[str] = ""
     owner: Optional[str] = None
     user_id: Optional[str] = None
+    status: Optional[str] = "Ativo"
+    inspection_reason: Optional[str] = None
+    inspection_message: Optional[str] = None
+    inspection_reply: Optional[str] = None  
     comments_count: Optional[int] = 0
     comentarios: List[ComentarioProjetoResponse] = []
 
@@ -43,6 +47,7 @@ class ProjectUpdate(BaseModel):
     tags: Optional[str] = None
     campaign_id: Optional[int] = None
     members: Optional[str] = None
+    inspection_reply: Optional[str] = None  
 
 class CampaignResponse(BaseModel):
     id: int

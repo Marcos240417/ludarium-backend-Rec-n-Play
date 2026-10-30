@@ -20,6 +20,7 @@ class PerfilUpdate(BaseModel):
         from_attributes = True
 
 class LinkResponse(BaseModel):
+    id: int
     rotulo: str
     url: str
 
@@ -27,13 +28,15 @@ class LinkResponse(BaseModel):
         from_attributes = True
 
 class ComunidadeResponse(BaseModel):
+    id: int
     nome: str
-    membros: str
+    membros: str  # Ajustado para string para aceitar formatos descritivos como "12,8 mil membros"
 
     class Config:
         from_attributes = True
 
 class ProjetoDestaqueResponse(BaseModel):
+    id: int
     titulo: str
     papel: str
     progresso: int
@@ -44,6 +47,7 @@ class ProjetoDestaqueResponse(BaseModel):
         from_attributes = True
 
 class AtividadeResponse(BaseModel):
+    id: int
     descricao: str
     tempo_atras: str
     likes: int
@@ -54,6 +58,7 @@ class AtividadeResponse(BaseModel):
         from_attributes = True
 
 class TrofeuResponse(BaseModel):
+    id: int
     titulo: str
     descricao: str
     concluido: bool
@@ -64,11 +69,11 @@ class TrofeuResponse(BaseModel):
 class PerfilCompletoResponse(BaseModel):
     id: int
     utilizador_email: str
-    nome: str
-    arroba: str
-    localizacao: str
-    biografia: str
-    badge_funcao: str
+    nome: Optional[str] = ""
+    arroba: Optional[str] = ""
+    localizacao: Optional[str] = ""
+    biografia: Optional[str] = ""
+    badge_funcao: Optional[str] = "NOVO MEMBRO"
     nivel: int
     xp_atual: int
     xp_proximo_nivel: int
@@ -84,3 +89,5 @@ class PerfilCompletoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+PerfilResponse = PerfilCompletoResponse

@@ -21,4 +21,4 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd services/servi
 
 Write-Host "Todos os serviços foram disparados em janelas separadas!" -ForegroundColor Green
 
-#Comando no terminal para ativar todas as pastas virtuais de uma vez só lugar: .\start_all.ps1 
+#Comando no terminal para ativar todas as pastas virtuais de uma vez só lugar: ./start_all.ps1

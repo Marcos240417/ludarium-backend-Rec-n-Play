@@ -1,3 +1,4 @@
+<!-- Caminho: frontend/community.html -->
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -7,63 +8,179 @@
     <link rel="stylesheet" href="community.css">
 </head>
 <body>
-    <header class="navbar">
-        <div class="logo">Ludarium</div>
-        <nav class="main-navbar">
-            <div class="nav-container">
-                <span class="nav-brand">Ludarium Hub</span>
-                <ul class="nav-links">
-                    <li><a href="http://127.0.0.1:8081/frontend/home.html">Projetos</a></li>
-                    <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
-                    <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
-                    <li><a href="http://127.0.0.1:8004/frontend/perfil.html">Perfil</a></li>
-                </ul>
-            </div>
-        </nav>
+    <header class="main-navbar">
+        <div class="nav-container">
+            <span class="nav-brand">Ludarium Hub</span>
+            <ul class="nav-links">
+                <li><a href="http://127.0.0.1:8081/frontend/home.html">Projetos</a></li>
+                <li><a href="http://127.0.0.1:8002/frontend/community.html" class="active">Comunidade</a></li>
+                <li><a href="http://127.0.0.1:8003/frontend/campanhas.html">Campanhas</a></li>
+                <li><a href="http://127.0.0.1:8002/frontend/chat.html">Mensagens</a></li>
+                <li><a href="http://127.0.0.1:8004/frontend/perfil.html">Perfil</a></li>
+            </ul>
+        </div>
     </header>
 
-    <main class="container">
+    <main class="container" style="max-width: 1400px;">
         <section class="hero-section">
             <div class="hero-text">
-                <h1>Comunidades de Desenvolvedores</h1>
-                <p>Junte-se a grupos, troque ideias e encontre parceiros para os seus projetos indie.</p>
+                <h1>Comunidades e Fóruns</h1>
+                <p>Junte-se a grupos, debata em fóruns públicos e crie chats privados ou equipas para os seus projetos indie.</p>
             </div>
-            <button class="btn-primary" onclick="abrirModalPublicacao()">+ Nova Publicação</button>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="abrirModalPublicacao()">+ Nova Publicação</button>
+                <button class="btn-primary" style="background: #2563eb;" onclick="abrirModalForum()">💬 Novo Fórum</button>
+
+            </div>
         </section>
 
-        <!-- Barra de Pesquisa e Filtros -->
-        <div class="filter-container" style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-            <input type="text" id="input-pesquisa" placeholder="Pesquisar por título ou conteúdo..." oninput="filtrarPublicacoes()" style="flex: 1; background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem 1rem; border-radius: 8px; color: white;">
-            <select id="select-filtro-badge" onchange="filtrarPublicacoes()" style="background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem; border-radius: 8px; color: white;">
-                <option value="">Todas as Badges</option>
-                <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
-                <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
-                <option value="DEVLOG">DEVLOG</option>
-            </select>
+        <!-- Abas de Navegação (Feed, Fóruns, Chats e Candidatos) -->
+        <div class="tabs-container" style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid #2a2e43; padding-bottom: 0.5rem;">
+            <button onclick="mudarAba('feed')" id="btn-aba-feed" class="btn-primary" style="background: #7c3aed; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Publicações</button>
+            <button onclick="mudarAba('foruns')" id="btn-aba-foruns" class="btn-primary" style="background: #1e293b; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Fóruns Públicos</button>
+            <button onclick="mudarAba('grupos')" id="btn-aba-grupos" class="btn-primary" style="background: #1e293b; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Chats e Candidatos</button>
         </div>
 
-        <div class="content-layout">
-            <!-- Feed Principal -->
-            <div class="feed-container">
-                <div id="loading" class="loading">A carregar publicações...</div>
-                <div id="communities-grid" class="communities-grid"></div>
+        <!-- Secção 1: Feed de Publicações -->
+        <div id="seccao-feed">
+            <div class="filter-container" style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                <input type="text" id="input-pesquisa" placeholder="Pesquisar por título ou conteúdo..." oninput="filtrarPublicacoes()" style="flex: 1; background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem 1rem; border-radius: 8px; color: white;">
+                <select id="select-filtro-badge" onchange="filtrarPublicacoes()" style="background: #181b28; border: 1px solid #2a2e43; padding: 0.75rem; border-radius: 8px; color: white;">
+                    <option value="">Todas as Badges</option>
+                    <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
+                    <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
+                    <option value="DEVLOG">DEVLOG</option>
+                </select>
             </div>
 
-            <!-- Sidebar com Oportunidades e Perfis -->
-            <aside class="sidebar">
-                <div class="sidebar-card">
-                    <h3>🚀 Oportunidades Abertas</h3>
-                    <div id="oportunidades-list">A carregar...</div>
+            <div class="content-layout">
+                <div class="feed-container">
+                    <div id="loading" class="loading">A carregar publicações...</div>
+                    <div id="communities-grid" class="communities-grid"></div>
                 </div>
-                <div class="sidebar-card">
-                    <h3>👥 Perfis Recomendados</h3>
-                    <div id="perfis-list">A carregar...</div>
+
+                <aside class="sidebar">
+                    <div class="sidebar-card">
+                        <h3>🚀 Oportunidades Abertas</h3>
+                        <div id="oportunidades-list">A carregar...</div>
+                    </div>
+                    <div class="sidebar-card">
+                        <h3>👥 Perfis Recomendados</h3>
+                        <div id="perfis-list">A carregar...</div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- Secção 2: Fóruns Públicos (Chat Direto e Membros Online) -->
+        <div id="seccao-foruns" style="display: none;">
+            <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; height: calc(100vh - 220px);">
+                <!-- Lista de Fóruns -->
+                <div style="background: #181b28; border: 1px solid #2a2e43; border-radius: 12px; padding: 1rem; overflow-y: auto;">
+                    <h3 style="color: white; font-size: 1rem; margin-bottom: 1rem;">💬 Fóruns Públicos</h3>
+                    <div id="lista-foruns-sidebar">A carregar...</div>
                 </div>
-            </aside>
+
+                <!-- Área de Membros e Chat Direto do Fórum Ativo -->
+                <div style="background: #1e293b; border: 1px solid #2a2e43; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
+                    <!-- Cabeçalho do Fórum -->
+                    <div style="padding: 1.25rem; background: #181b28; border-bottom: 1px solid #2a2e43; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 id="forum-ativo-titulo" style="color: white; margin: 0; font-size: 1.1rem;">Selecione um fórum</h3>
+                            <span id="forum-ativo-desc" style="color: #94a3b8; font-size: 0.85rem;"></span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <div id="forum-acoes-admin"></div>
+                        </div>
+                    </div>
+
+                    <!-- Divisão: Membros Online à Esquerda / Chat do Fórum à Direita -->
+                    <div style="display: grid; grid-template-columns: 280px 1fr; flex: 1; overflow: hidden;">
+                        <!-- Lista de Membros Online -->
+                        <div style="background: #121520; border-right: 1px solid #2a2e43; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto;">
+                            <h4 id="label-painel-lateral" style="color: white; font-size: 0.9rem; margin: 0;">🟢 Membros Online</h4>
+                            <div id="lista-topicos-forum" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                        </div>
+
+                        <!-- Janela de Chat Direto do Fórum -->
+                        <div style="display: flex; flex-direction: column; background: #1e293b; overflow: hidden;">
+                            <div id="forum-chat-subtitulo" style="padding: 10px 1.5rem; background: #181b28; border-bottom: 1px solid #2a2e43; color: #2dd4bf; font-size: 0.85rem; font-weight: bold;">
+                                Selecione um fórum ao lado para entrar no chat
+                            </div>
+                            <div id="forum-mensagens-container" style="flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; color: #94a3b8; align-items: center; justify-content: center;">
+                                <p>Nenhum fórum selecionado.</p>
+                            </div>
+                            <div id="forum-chat-input-area" style="padding: 1rem; background: #181b28; border-top: 1px solid #2a2e43; display: none; gap: 0.75rem;">
+                                <input type="text" id="input-mensagem-forum" placeholder="Escreva a sua mensagem no chat do fórum..." onkeypress="verificarEnterForum(event)" style="flex: 1; background: #0f172a; border: 1px solid #2a2e43; padding: 10px 14px; border-radius: 8px; color: white; outline: none; font-size: 0.9rem;">
+                                <button class="btn-primary" style="background: #7c3aed; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;" onclick="enviarMensagemForumAtivo()">Enviar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secção 3: Chats e Candidatos (Duas Colunas Exatas) -->
+        <div id="seccao-grupos" style="display: none;">
+            <div style="margin-bottom: 1.5rem; background: #181b28; border: 1px solid #2a2e43; padding: 1rem 1.5rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 id="titulo-campanha-ativa" style="color: white; font-size: 1.2rem; margin: 0;">Gerenciamento de Candidatos: Procuramos desenvolvedores Kotlin</h2>
+                    <span style="color: #94a3b8; font-size: 0.85rem;">Utilizadores que clicam em "Quero Participar" aparecem automaticamente nesta listagem.</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; min-height: 550px;">
+                <!-- Coluna Esquerda: Lista de Candidatos -->
+                <div style="background: #181b28; border: 1px solid #2a2e43; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem;">
+                        <h3 id="contador-candidatos-titulo" style="color: white; font-size: 1rem; margin: 0;">Candidatos (0)</h3>
+                        <input type="text" id="input-busca-candidatos" placeholder="Search..." oninput="filtrarCandidatosGestao()" style="background: #0f172a; border: 1px solid #2a2e43; padding: 6px 12px; border-radius: 6px; color: white; font-size: 0.85rem; width: 180px;">
+                    </div>
+                    <div id="lista-candidatos-gestao" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem;">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+
+                <!-- Coluna Direita: Grupos em Produção -->
+                <div style="background: #181b28; border: 1px solid #2a2e43; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: white; font-size: 1rem; margin: 0;">Grupos em Produção</h3>
+                        <span style="font-size: 0.8rem; color: #2dd4bf;">Equipas Ativas</span>
+                    </div>
+                    <div id="lista-grupos-producao" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem;">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- Modal para Criar Publicação -->
+    <!-- Modal de Chat Estilo WhatsApp / Equipa -->
+    <div id="modal-chat-whatsapp" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1200;">
+        <div style="background: #1e293b; width: 800px; height: 620px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 1rem 1.5rem; background: #181b28; border-bottom: 1px solid #2a2e43; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div id="chat-wa-avatar" style="width: 40px; height: 40px; background: #7c3aed; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">M</div>
+                    <div>
+                        <h4 id="chat-wa-nome" style="color: white; margin: 0; font-size: 1rem;">Nome do Utilizador</h4>
+                        <span id="chat-wa-sub" style="color: #22c55e; font-size: 0.75rem;">Online</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button onclick="iniciarVideoChamadaModal()" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.2rem;" title="Videochamada">📹</button>
+                    <button onclick="iniciarChamadaVozModal()" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.2rem;" title="Chamada de Voz">📞</button>
+                    <span onclick="fecharModalChatWhatsapp()" style="cursor: pointer; font-size: 1.6rem; color: #94a3b8; margin-left: 10px;">&times;</span>
+                </div>
+            </div>
+            <div id="chat-wa-mensagens" style="flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: #1e293b; color: #94a3b8;"></div>
+            <div style="padding: 1rem; background: #181b28; border-top: 1px solid #2a2e43; display: flex; gap: 0.75rem; align-items: center;">
+                <input type="text" id="chat-wa-input" placeholder="Digite sua mensagem..." onkeypress="verificarEnterChatWhatsapp(event)" style="flex: 1; background: #0f172a; border: 1px solid #2a2e43; padding: 10px 14px; border-radius: 8px; color: white; font-size: 0.9rem; outline: none;">
+                <button class="btn-primary" style="background: #7c3aed; padding: 10px 20px; border-radius: 8px;" onclick="enviarMensagemChatWhatsapp()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais Originais Mantidos Intactos -->
     <div id="modal-pub" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
         <div class="modal-content" style="background: #1e293b; padding: 2rem; border-radius: 12px; width: 450px; border: 1px solid #334155;">
             <span class="close" onclick="fecharModalPublicacao()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
@@ -83,28 +200,89 @@
         </div>
     </div>
 
-    <!-- Modal para Editar Publicação -->
-    <div id="modal-editar" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
+    <div id="modal-forum" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
         <div class="modal-content" style="background: #1e293b; padding: 2rem; border-radius: 12px; width: 450px; border: 1px solid #334155;">
-            <span class="close" onclick="fecharModalEditar()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
-            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: white;">Editar Publicação</h2>
-            <form id="form-editar-pub" onsubmit="salvarEdicaoPublicacao(event)" style="display: flex; flex-direction: column; gap: 1rem;">
-                <input type="hidden" id="edit-pub-id">
-                <input type="text" id="edit-pub-titulo" placeholder="Título" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
-                <select id="edit-pub-badge" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
-                    <option value="PROCURANDO EQUIPE">PROCURANDO EQUIPE</option>
-                    <option value="PEDIDO DE FEEDBACK">PEDIDO DE FEEDBACK</option>
-                    <option value="DEVLOG">DEVLOG</option>
-                </select>
-                <input type="text" id="edit-pub-comunidade" placeholder="Nome da Comunidade" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
-                <textarea id="edit-pub-conteudo" rows="4" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; resize: vertical;"></textarea>
-                <input type="text" id="edit-pub-tags" placeholder="Tags separadas por vírgula" style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
-                <button type="submit" class="btn-primary" style="background: #7c3aed; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Salvar Alterações</button>
+            <span class="close" onclick="fecharModalForum()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: white;">Criar Novo Fórum Público</h2>
+            <form id="form-novo-forum" onsubmit="criarForum(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="text" id="forum-titulo" placeholder="Título do Fórum" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <input type="text" id="forum-categoria" placeholder="Categoria (ex: Game Design, Programação)" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                <textarea id="forum-descricao" placeholder="Descrição do debate..." rows="3" required style="padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; resize: vertical;"></textarea>
+                <button type="submit" class="btn-primary" style="background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">Criar Fórum</button>
             </form>
         </div>
     </div>
 
-    <!-- Script JavaScript da Comunidade -->
+    <div id="modal-grupo" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: #1e293b; padding: 2rem; border-radius: 12px; width: 450px; border: 1px solid #334155;">
+            <span class="close" onclick="fecharModalGrupo()" style="float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8;">&times;</span>
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: white;">👥 Criar Chat Privado ou Equipa</h2>
+            <form id="form-novo-grupo" onsubmit="criarGrupoPrivado(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="color: #cbd5e1; font-size: 0.85rem; display: block; margin-bottom: 4px;">Tipo de Chat / Grupo:</label>
+                    <select id="grupo-tipo" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                        <option value="privado">Chat Privado / Recrutamento (1 a 1 ou Direto)</option>
+                        <option value="grupo">Equipa de Produção / Projeto</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color: #cbd5e1; font-size: 0.85rem; display: block; margin-bottom: 4px;">Título / Assunto (Obrigatório):</label>
+                    <input type="text" id="grupo-nome" placeholder="Ex: Entrevista Artista 2D / Projeto Alpha" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white;">
+                </div>
+                <div>
+                    <label style="color: #cbd5e1; font-size: 0.85rem; display: block; margin-bottom: 4px;">Descrição:</label>
+                    <textarea id="grupo-descricao" placeholder="Objetivo da conversa ou projeto..." rows="3" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; resize: vertical;"></textarea>
+                </div>
+                <button type="submit" class="btn-primary" style="background: #0d9488; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 5px;">Criar Chat / Equipa</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script de Gestão de Tokens e Navegação -->
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenUrl = urlParams.get('token');
+            if (tokenUrl) {
+                localStorage.setItem('ludarium_token', tokenUrl);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        })();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const linksMenu = document.querySelectorAll('.nav-links a');
+            linksMenu.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const token = localStorage.getItem('ludarium_token') || localStorage.getItem('access_token');
+                    if (token) {
+                        e.preventDefault();
+                        try {
+                            const urlDestino = new URL(link.href);
+                            urlDestino.searchParams.set('token', token);
+                            window.location.href = urlDestino.toString();
+                        } catch (err) {
+                            window.location.href = link.href;
+                        }
+                    }
+                });
+            });
+        });
+
+        function mudarAba(aba) {
+            document.getElementById('seccao-feed').style.display = aba === 'feed' ? 'block' : 'none';
+            document.getElementById('seccao-foruns').style.display = aba === 'foruns' ? 'block' : 'none';
+            document.getElementById('seccao-grupos').style.display = aba === 'grupos' ? 'block' : 'none';
+
+            document.getElementById('btn-aba-feed').style.background = aba === 'feed' ? '#7c3aed' : '#1e293b';
+            document.getElementById('btn-aba-foruns').style.background = aba === 'foruns' ? '#7c3aed' : '#1e293b';
+            document.getElementById('btn-aba-grupos').style.background = aba === 'grupos' ? '#7c3aed' : '#1e293b';
+
+            if (aba === 'foruns' && typeof carregarForuns === 'function') carregarForuns();
+            if (aba === 'grupos' && typeof carregarGestaoCandidatosEGrupos === 'function') carregarGestaoCandidatosEGrupos();
+        }
+    </script>
+
+    <!-- Script Principal da Comunidade -->
     <script src="community.js"></script>
 </body>
 </html>

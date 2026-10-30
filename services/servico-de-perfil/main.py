@@ -1,24 +1,48 @@
 import os
 from fastapi import FastAPI, Depends, HTTPException, status, Header
+from sqlalchemy.orm import selectinload
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
-import models, database, schemas
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy import text
+from pydantic import BaseModel
+import models
+import database
+import schemas
 import httpx
 
 SECRET_KEY = "ludarium_super_secret_key_jwt"
 ALGORITHM = "HS256"
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8080/login")
-
-# Cria as tabelas na base de dados utilizando o metadata unificado
-database.Base.metadata.create_all(bind=database.engine)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/login")
 
 app = FastAPI(title="Serviço de Perfil - Ludarium", version="1.0.0")
 
-app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+@app.on_event("startup")
+async def startup_event():
+    async with database.engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+        
+    migrations = [
+        "ALTER TABLE perfis_utilizadores ADD COLUMN IF NOT EXISTS nivel INTEGER DEFAULT 1;",
+        "ALTER TABLE perfis_utilizadores ADD COLUMN IF NOT EXISTS xp_atual INTEGER DEFAULT 0;",
+        "ALTER TABLE perfis_utilizadores ADD COLUMN IF NOT EXISTS xp_proximo_nivel INTEGER DEFAULT 1000;"
+    ]
+    
+    for mig in migrations:
+        try:
+            async with database.engine.begin() as conn:
+                await conn.execute(text(mig))
+        except Exception as e:
+            print(f"Aviso na migração DDL do perfil: {e}")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +52,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def obter_db():
+    async for session in database.obter_base_de_dados():
+        yield session
+
 def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -36,21 +64,35 @@ def obter_utilizador_atual(token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
+        email: str = payload.get("sub") or payload.get("email")
         if email is None:
             raise credentials_exception
         return email
     except JWTError:
         raise credentials_exception
 
+class XPRequest(BaseModel):
+    xp: int
+
 @app.put("/perfil/eu", response_model=schemas.PerfilCompletoResponse)
-def atualizar_perfil(
-    dados: schemas.PerfilUpdate, 
-    db: Session = Depends(database.obter_base_de_dados), 
+async def atualizar_perfil(
+    dados: schemas.PerfilUpdate,
+    db: AsyncSession = Depends(database.obter_base_de_dados),
     utilizador_email: str = Depends(obter_utilizador_atual)
 ):
-    perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
-
+    result = await db.execute(
+        select(models.PerfilModel)
+        .options(
+            selectinload(models.PerfilModel.links),
+            selectinload(models.PerfilModel.comunidades),
+            selectinload(models.PerfilModel.projetos_destaque),
+            selectinload(models.PerfilModel.atividades),
+            selectinload(models.PerfilModel.trofeus)
+        )
+        .filter(models.PerfilModel.utilizador_email == utilizador_email)
+    )
+    perfil = result.scalars().first()
+    
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
     
@@ -66,84 +108,125 @@ def atualizar_perfil(
         perfil.badge_funcao = dados.badge_funcao
 
     if dados.links is not None:
-        db.query(models.PerfilLinkModel).filter(models.PerfilLinkModel.perfil_id == perfil.id).delete()
+        perfil.links.clear()
         for l in dados.links:
-            novo_link = models.PerfilLinkModel(perfil_id=perfil.id, rotulo=l.rotulo, url=l.url)
+            novo_link = models.LinkModel(
+                perfil_id=perfil.id,
+                rotulo=l.rotulo,
+                url=l.url
+            )
             db.add(novo_link)
 
-    db.commit()
-    db.refresh(perfil)
-    return perfil
+    await db.commit()
+    
+    result_final = await db.execute(
+        select(models.PerfilModel)
+        .options(
+            selectinload(models.PerfilModel.links),
+            selectinload(models.PerfilModel.comunidades),
+            selectinload(models.PerfilModel.projetos_destaque),
+            selectinload(models.PerfilModel.atividades),
+            selectinload(models.PerfilModel.trofeus)
+        )
+        .filter(models.PerfilModel.id == perfil.id)
+    )
+    perfil_atualizado = result_final.scalars().first()
+    
+    return perfil_atualizado
 
 @app.delete("/perfil/eu", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_perfil(
-    db: Session = Depends(database.obter_base_de_dados), 
+async def eliminar_perfil(
+    db: AsyncSession = Depends(obter_db), 
     utilizador_email: str = Depends(obter_utilizador_atual),
-    authorization: str = Header(None) # Para reencaminhar o token se necessário
+    authorization: str = Header(None)
 ):
-    perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
+    result = await db.execute(select(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email))
+    perfil = result.scalars().first()
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
     
-    # 1. Apaga primeiro todos os registos dependentes do perfil
-    db.query(models.PerfilLinkModel).filter(models.PerfilLinkModel.perfil_id == perfil.id).delete()
-    db.query(models.PerfilComunidadeModel).filter(models.PerfilComunidadeModel.perfil_id == perfil.id).delete()
-    db.query(models.PerfilProjetoModel).filter(models.PerfilProjetoModel.perfil_id == perfil.id).delete()
-    db.query(models.PerfilAtividadeModel).filter(models.PerfilAtividadeModel.perfil_id == perfil.id).delete()
-    db.query(models.PerfilTrofeuModel).filter(models.PerfilTrofeuModel.perfil_id == perfil.id).delete()
+    for model_cls in [models.LinkModel, models.PerfilComunidadeModel, models.PerfilProjetoModel, models.PerfilAtividadeModel, models.PerfilTrofeuModel]:
+        res = await db.execute(select(model_cls).filter(model_cls.perfil_id == perfil.id))
+        for row in res.scalars().all():
+            await db.delete(row)
     
-    # 2. Apaga o perfil principal
-    db.delete(perfil)
-    db.commit()
+    await db.delete(perfil)
+    await db.commit()
 
-    # 3. Notifica o Serviço de Autenticação (porta 8001) para apagar o utilizador/credenciais
     try:
         auth_service_url = "http://localhost:8001" 
         headers = {"Authorization": authorization} if authorization else {}
-        with httpx.Client() as client:
-            client.delete(f"{auth_service_url}/users/me", headers=headers)
+        async with httpx.AsyncClient() as client:
+            await client.delete(f"{auth_service_url}/users/me", headers=headers)
     except Exception as e:
         print(f"Erro ao comunicar com o serviço de autenticação para apagar o utilizador: {e}")
 
-    return None      
+    return None     
 
-@app.get("/perfil/eu", response_model=schemas.PerfilCompletoResponse)
-def obter_perfil_completo(db: Session = Depends(database.obter_base_de_dados), utilizador_email: str = Depends(obter_utilizador_atual)):
-    perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
+
+@app.get("/perfil/eu", response_model=schemas.PerfilResponse)
+async def obter_perfil_completo(
+    db: AsyncSession = Depends(database.obter_base_de_dados), 
+    utilizador_email: str = Depends(obter_utilizador_atual)
+):
+    result = await db.execute(
+        select(models.PerfilModel)
+        .options(
+            selectinload(models.PerfilModel.links),
+            selectinload(models.PerfilModel.comunidades),
+            selectinload(models.PerfilModel.projetos_destaque),
+            selectinload(models.PerfilModel.atividades),
+            selectinload(models.PerfilModel.trofeus)
+        )
+        .filter(models.PerfilModel.utilizador_email == utilizador_email)
+    )
+    perfil = result.scalars().first()
     
     if not perfil:
-        nome_base = utilizador_email.split('@')[0] if utilizador_email else "utilizador"
-        
         perfil = models.PerfilModel(
             utilizador_email=utilizador_email,
-            nome="",                    
-            arroba=f"@{nome_base}",     
-            localizacao="",             
-            biografia="",               
+            nome="",
+            arroba=f"@{utilizador_email.split('@')[0]}",
+            localizacao="",
+            biografia="",
             badge_funcao="NOVO MEMBRO",
-            nivel=1,                    
-            xp_atual=0,                 
-            xp_proximo_nivel=1000,      
+            nivel=1,
+            xp_atual=0,
+            xp_proximo_nivel=1000,
             seguidores_qtd=0,
             seguindo_qtd=0,
             projetos_qtd=0,
             contribuicoes_anuais=0
         )
         db.add(perfil)
-        db.commit()
-        db.refresh(perfil)
+        await db.commit()
+        await db.refresh(perfil)
+        
+        result = await db.execute(
+            select(models.PerfilModel)
+            .options(
+                selectinload(models.PerfilModel.links),
+                selectinload(models.PerfilModel.comunidades),
+                selectinload(models.PerfilModel.projetos_destaque),
+                selectinload(models.PerfilModel.atividades),
+                selectinload(models.PerfilModel.trofeus)
+            )
+            .filter(models.PerfilModel.utilizador_email == utilizador_email)
+        )
+        perfil = result.scalars().first()
 
     return perfil
 
 @app.post("/perfil/adicionar-xp")
-def adicionar_xp(
-    dados: dict, 
-    db: Session = Depends(database.obter_base_de_dados), 
+async def adicionar_xp(
+    dados: XPRequest, 
+    db: AsyncSession = Depends(obter_db), 
     utilizador_email: str = Depends(obter_utilizador_atual)
 ):
-    quantidade = dados.get("xp", 0)
+    quantidade = dados.xp
     
-    perfil = db.query(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email).first()
+    result = await db.execute(select(models.PerfilModel).filter(models.PerfilModel.utilizador_email == utilizador_email))
+    perfil = result.scalars().first()
     
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado para este utilizador.")
@@ -155,8 +238,8 @@ def adicionar_xp(
         perfil.nivel += 1
         perfil.xp_proximo_nivel = int(perfil.xp_proximo_nivel * 1.2)
         
-    db.commit()
-    db.refresh(perfil)
+    await db.commit()
+    await db.refresh(perfil)
     
     return {
         "mensagem": f"+{quantidade} XP adicionados com sucesso!",
@@ -166,47 +249,30 @@ def adicionar_xp(
     }    
 
 @app.get("/perfil/leaderboard")
-async def obter_leaderboard(db: Session = Depends(database.obter_base_de_dados)):
-    perfis = db.query(models.PerfilModel).order_by(models.PerfilModel.xp_atual.desc()).limit(10).all()
+async def obter_leaderboard(db: AsyncSession = Depends(obter_db)):
+    result = await db.execute(select(models.PerfilModel).order_by(models.PerfilModel.xp_atual.desc()).limit(10))
+    perfis = result.scalars().all()
     
     ranking = []
     for p in perfis:
         ranking.append({
-            "nome": p.nome,
+            "nome": p.nome or p.arroba,
             "arroba": p.arroba,
             "nivel": p.nivel,
             "xp_atual": p.xp_atual
         })
     return ranking
 
-def atualizar_trofeus_automaticos(perfil, db):
-    """Verifica e atualiza o estado dos troféus com base no progresso atual do utilizador."""
-    regras_trofeus = {
-        "Primeiro Passo": True,
-        "Crítico de Jogos": perfil.xp_atual >= 75,
-        "Mestre do Nível 5": perfil.nivel >= 5,
-        "Explorador Global": perfil.nivel >= 10
-    }
-
-    trofeus_db = db.query(models.PerfilTrofeuModel).filter(models.PerfilTrofeuModel.perfil_id == perfil.id).all()
-    
-    for t in trofeus_db:
-        if t.titulo in regras_trofeus:
-            if regras_trofeus[t.titulo] and not t.concluido:
-                t.concluido = True
-                
-    db.commit()
-
 @app.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_utilizador_auth(
-    db: Session = Depends(database.obter_base_de_dados), 
+async def eliminar_utilizador_auth(
+    db: AsyncSession = Depends(obter_db), 
     utilizador_email: str = Depends(obter_utilizador_atual)
 ):
-    # Procura e remove o utilizador da base de dados de autenticação pelo email do token
-    utilizador = db.query(models.UserModel).filter(models.UserModel.email == utilizador_email).first()
+    result = await db.execute(select(models.UserModel).filter(models.UserModel.email == utilizador_email))
+    utilizador = result.scalars().first()
     
     if utilizador:
-        db.delete(utilizador)
-        db.commit()
+        await db.delete(utilizador)
+        await db.commit()
         
-    return None    
+    return None

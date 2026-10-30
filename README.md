@@ -1,4 +1,7 @@
-# 🚀 Ludarium Backend
+---
+
+```markdown
+# 🚀 Ludaryum Backend
 
 <p align="center">
   <b>Ecossistema digital integrado para gestão de projetos, gamificação, portefólios dinâmicos e colaboração social.</b>
@@ -50,3 +53,76 @@ ludarium-backend/
     ├── servico-de-perfil/      # Serviço de Perfil e Estatísticas
     ├── servico-de-gateway/     # Serviço de Borda (API Gateway)
     └── project-service/        # Serviço de Gestão de Projetos e Builds
+
+```
+
+---
+
+## ⚙️ Pré-requisitos e Tecnologias
+
+Antes de iniciar, certifique-se de que possui os seguintes componentes instalados no seu ambiente Windows:
+
+* **Python 3.10+** (Recomendado Python 3.15+)
+* **PostgreSQL 15+** a correr localmente (com bases de dados configuradas para cada microsserviço, ex: `ludarium_auth`, `ludarium_comunidade`, `ludarium_perfil`, etc.)
+* **PowerShell** (para execução dos scripts nativos de automação)
+
+---
+
+## 🛠️ Configuração e Instalação Local
+
+Cada microsserviço possui o seu próprio ambiente virtual (`venv`) isolado e dependências específicas. Para configurar o projeto do zero:
+
+1. **Clone o repositório:**
+```bash
+git clone [https://github.com/SEU-UTILIZADOR/ludarium-backend.git](https://github.com/SEU-UTILIZADOR/ludarium-backend.git)
+cd ludarium-backend
+
+```
+
+
+2. **Crie e configure os ambientes virtuais em cada serviço (exemplo para o Auth Service):**
+```bash
+cd services/auth-service
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+deactivate
+cd ../..
+
+```
+
+
+*(Repita o processo de criação de `venv` e instalação de dependências para os restantes diretórios dentro de `services/`).*
+
+---
+
+## 🚀 Execução do Sistema
+
+O repositório disponibiliza um script inteligente em PowerShell na raiz (`start_all.ps1`) que abre e gere todos os microsserviços em simultâneo através de instâncias independentes do Uvicorn.
+
+Para iniciar todo o ecossistema:
+
+1. Abra o **PowerShell** na pasta raiz do projeto.
+2. Certifique-se de que a política de execução permite scripts locais (se necessário: `Set-ExecutionPolicy Unrestricted -Scope Process`).
+3. Execute o script de arranque:
+```powershell
+./start_all.ps1
+
+```
+
+
+
+---
+
+## 🧪 Testes Automatizados
+
+O sistema conta com um script global de testes na raiz para validar a integridade dos módulos através do `pytest`:
+
+```powershell
+./run_tests.ps1
+
+```
+
+---
+
+

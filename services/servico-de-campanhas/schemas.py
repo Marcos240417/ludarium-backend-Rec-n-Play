@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class CampanhaCreate(BaseModel):
     titulo: str
@@ -30,7 +30,7 @@ class CampanhaResponse(BaseModel):
     formato: str
     progresso_porcentagem: int
     dias_restantes: int
-    objetivos: list[ObjetivoResponse] = []
+    objetivos: List[ObjetivoResponse] = []
 
     class Config:
         from_attributes = True

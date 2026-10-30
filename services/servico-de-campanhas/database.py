@@ -1,18 +1,31 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 
-# Utilize a sua palavra-passe real do PostgreSQL
-SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://postgres:123@localhost:5432/ludarium_auth"
+# URL de conexão assíncrona para o serviço de campanhas
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql+asyncpg://postgres:123@localhost:5432/ludarium_campanhas"
+)
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
+
+SessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
 
 Base = declarative_base()
 
-def obter_base_de_dados():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def obter_base_de_dados():
+    async with SessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
+
+# Alias de compatibilidade
+get_db = obter_base_de_dados
